@@ -1,0 +1,108 @@
+/* Global Contrast CSS Overrides for Native Input Elements & Labels */
+
+/* Enable native browser dark/light mode form styles */
+.v-theme--augustDark {
+  color-scheme: dark !important;
+}
+.v-theme--augustLight {
+  color-scheme: light !important;
+}
+
+/* ============================================================================
+   --- DARK MODE STYLING ---
+   ============================================================================ */
+
+/* Input text values */
+.v-theme--augustDark input,
+.v-theme--augustDark textarea,
+.v-theme--augustDark .v-field__input {
+  color: #E8E8E8 !important;
+  -webkit-text-fill-color: #E8E8E8 !important;
+}
+
+/* Default state labels (Make them clearly visible in light grey) */
+.v-theme--augustDark .v-label,
+.v-theme--augustDark .v-field-label,
+.v-theme--augustDark .v-input__control .v-label {
+  color: rgba(255, 255, 255, 0.6) !important;
+  opacity: 1 !important;
+}
+
+/* Focused state labels (Highlight in primary orange) */
+.v-theme--augustDark .v-field--focused .v-label,
+.v-theme--augustDark .v-field--focused .v-field-label {
+  color: #FF6B35 !important;
+}
+
+/* Placeholders */
+.v-theme--augustDark input::placeholder,
+.v-theme--augustDark textarea::placeholder,
+.v-theme--augustDark .v-field__input input::placeholder,
+.v-theme--augustDark .v-field__input::placeholder,
+.v-theme--augustDark .v-field__placeholder {
+  color: rgba(255, 255, 255, 0.4) !important;
+  -webkit-text-fill-color: rgba(255, 255, 255, 0.4) !important;
+}
+
+/* Field outline borders (Make borders slightly more visible) */
+.v-theme--augustDark .v-field__outline {
+  color: rgba(255, 255, 255, 0.2) !important;
+}
+.v-theme--augustDark .v-field--focused .v-field__outline {
+  color: #FF6B35 !important;
+}
+
+
+/* ============================================================================
+   --- LIGHT MODE STYLING ---
+   ============================================================================ */
+
+/* Input text values */
+.v-theme--augustLight input,
+.v-theme--augustLight textarea,
+.v-theme--augustLight .v-field__input {
+  color: #1A1D27 !important;
+  -webkit-text-fill-color: #1A1D27 !important;
+}
+
+/* Default state labels */
+.v-theme--augustLight .v-label,
+.v-theme--augustLight .v-field-label,
+.v-theme--augustLight .v-input__control .v-label {
+  color: rgba(0, 0, 0, 0.6) !important;
+  opacity: 1 !important;
+}
+
+/* Focused state labels */
+.v-theme--augustLight .v-field--focused .v-label,
+.v-theme--augustLight .v-field--focused .v-field-label {
+  color: #E85D26 !important;
+}
+
+/* Placeholders */
+.v-theme--augustLight input::placeholder,
+.v-theme--augustLight textarea::placeholder,
+.v-theme--augustLight .v-field__input input::placeholder,
+.v-theme--augustLight .v-field__input::placeholder,
+.v-theme--augustLight .v-field__placeholder {
+  color: rgba(0, 0, 0, 0.4) !important;
+  -webkit-text-fill-color: rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Field outline borders */
+.v-theme--augustLight .v-field__outline {
+  color: rgba(0, 0, 0, 0.25) !important;
+}
+.v-theme--augustLight .v-field--focused .v-field__outline {
+  color: #E85D26 !important;
+}
+
+
+/* ============================================================================
+   --- CARD STYLING ADJUSTMENTS ---
+   ============================================================================ */
+
+.v-card.sticky-panel {
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2) !important;
+}

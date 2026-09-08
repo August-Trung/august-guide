@@ -1,0 +1,54 @@
+# Dependencies & Frontend Build Output
+node_modules/
+dist/
+dist-ssr/
+
+# Tauri & Rust Build Artifacts
+src-tauri/target/
+src-tauri/WixTools/
+release/
+*.deb
+*.exe
+*.msi
+*.dmg
+*.AppImage
+*.tar.gz
+*.zip
+
+# Local SQLite & Databases
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Environment Variables & Secrets
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# IDE & Editor Configs
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+Thumbs.db
+
+# Logs & Temporary Files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+*.tmp
+*.bak
+
+

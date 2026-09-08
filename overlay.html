@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>August Mark Overlay</title>
+    <script>
+      function sendToRust(level, args) {
+        try {
+          const msg = Array.from(args).map(arg => {
+            if (typeof arg === 'object') {
+              try { return JSON.stringify(arg); } catch(e) { return String(arg); }
+            }
+            return String(arg);
+          }).join(' ');
+          
+          if (window.__TAURI_INTERNALS__ && window.__TAURI_INTERNALS__.invoke) {
+            window.__TAURI_INTERNALS__.invoke('log_from_js', { msg: '[Overlay Window ' + level + '] ' + msg });
+          }
+        } catch(e) {}
+      }
+
+      const originalLog = console.log;
+      console.log = function() {
+        originalLog.apply(console, arguments);
+        sendToRust('INFO', arguments);
+      };
+      const originalError = console.error;
+      console.error = function() {
+        originalError.apply(console, arguments);
+        sendToRust('ERROR', arguments);
+      };
+      const originalWarn = console.warn;
+      console.warn = function() {
+        originalWarn.apply(console, arguments);
+        sendToRust('WARN', arguments);
+      };
+
+      window.onerror = function(message, source, lineno, colno, error) {
+        const errStr = "JS Error: " + message + " at " + source + ":" + lineno + ":" + colno;
+        sendToRust('CRITICAL', [errStr]);
+      };
+      window.addEventListener('unhandledrejection', function(event) {
+        const errStr = 'JS Promise Rejection: ' + (event.reason ? (event.reason.stack || event.reason) : 'unknown');
+        sendToRust('CRITICAL', [errStr]);
+      });
+    </script>
+    <style>
+      html, body, #app {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        background: #121212 !important;
+        background-color: #121212 !important;
+        overflow: hidden;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/overlay.ts"></script>
+  </body>
+</html>
