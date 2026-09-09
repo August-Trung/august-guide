@@ -263,6 +263,23 @@ const translations: Record<string, any> = {
       issuesLogged: 'Steps Recorded',
       restoreWarningDesc: 'This will delete all current guide documents, steps, and screenshots on your device and replace them with the data from the backup.'
     },
+    updater: {
+      updateAvailableTitle: 'New Update Available!',
+      whatsNew: "What's new in this version:",
+      defaultNotes: 'This update includes performance improvements and bug fixes.',
+      autoRestartNotice: 'The application will automatically download, install, and relaunch the new version.',
+      downloading: 'Downloading update...',
+      installingAuto: 'Automatically installs upon completion',
+      later: 'Later',
+      updateNow: 'Update Now',
+      updating: 'Updating...',
+      checkUpdates: 'Check for Updates',
+      checking: 'Checking for updates...',
+      autoCheckTitle: 'Auto-check for updates on launch',
+      autoCheckDesc: 'Silently check for new versions every time you start August Guide',
+      upToDate: 'You are using the latest version ({version})',
+      newVersionAvailable: 'New version {version} is available!'
+    },
     overlay: {
       saveIssue: 'Save Step',
       discard: 'Discard',
@@ -633,6 +650,23 @@ const translations: Record<string, any> = {
       totalSteps: 'Tổng số bước đã tạo',
       issuesLogged: 'Tổng số bước đã tạo',
       restoreWarningDesc: 'Hành động này sẽ xóa toàn bộ các bài hướng dẫn, các bước thực hiện và ảnh chụp hiện tại trên thiết bị của bạn và thay thế bằng dữ liệu từ bản sao lưu.'
+    },
+    updater: {
+      updateAvailableTitle: 'Đã có bản cập nhật mới!',
+      whatsNew: 'Những điểm mới trong phiên bản này:',
+      defaultNotes: 'Bản cập nhật bao gồm các cải tiến hiệu năng và sửa lỗi.',
+      autoRestartNotice: 'Ứng dụng sẽ tự động tải về, cài đặt và khởi động lại phiên bản mới.',
+      downloading: 'Đang tải bản cập nhật...',
+      installingAuto: 'Tự động cài đặt khi hoàn tất',
+      later: 'Để sau',
+      updateNow: 'Cập nhật ngay',
+      updating: 'Đang cập nhật...',
+      checkUpdates: 'Kiểm tra Cập nhật',
+      checking: 'Đang kiểm tra cập nhật...',
+      autoCheckTitle: 'Tự động kiểm tra cập nhật khi mở ứng dụng',
+      autoCheckDesc: 'Tự động kiểm tra bản phát hành mới ngầm mỗi khi bạn khởi động August Guide',
+      upToDate: 'Bạn đang sử dụng phiên bản mới nhất ({version})',
+      newVersionAvailable: 'Đã có bản phát hành mới {version}!'
     },
     overlay: {
       saveIssue: 'Lưu Bước',

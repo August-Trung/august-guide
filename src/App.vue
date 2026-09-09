@@ -39,13 +39,18 @@
     >
       <v-progress-circular indeterminate color="primary" size="64"></v-progress-circular>
     </v-overlay>
+
+    <!-- Global Update Modal -->
+    <UpdateModal />
   </v-app>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, watch } from 'vue'
 import AppSidebar from '@/components/common/AppSidebar.vue'
+import UpdateModal from '@/components/common/UpdateModal.vue'
 import { useTauriEvents } from '@/composables/useTauriEvents'
+import { useAppUpdater } from '@/composables/useAppUpdater'
 import { useUiStore } from '@/stores/uiStore'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useProjectStore } from '@/stores/projectStore'
@@ -54,6 +59,7 @@ import { useTheme } from 'vuetify'
 const uiStore = useUiStore()
 const settingsStore = useSettingsStore()
 const projectStore = useProjectStore()
+const { checkForUpdates } = useAppUpdater()
 const theme = useTheme()
 
 // Initialize Tauri event listeners globally for the main window
@@ -77,6 +83,14 @@ onMounted(async () => {
   
   // Fetch projects list
   await projectStore.fetchProjects()
+
+  // Auto-check for updates silently on startup (after 2.5s delay to ensure smooth window render)
+  setTimeout(() => {
+    const autoCheck = settingsStore.getSettingValue<boolean>('auto_check_updates', true)
+    if (autoCheck) {
+      checkForUpdates(true)
+    }
+  }, 2500)
 })
 
 // Watch theme setting changes

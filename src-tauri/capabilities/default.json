@@ -9,6 +9,7 @@
     "fs:default",
     "shell:default",
     "global-shortcut:default",
-    "window-state:default"
+    "window-state:default",
+    "updater:default"
   ]
 }

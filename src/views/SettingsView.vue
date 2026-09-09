@@ -406,10 +406,55 @@
 
               <v-divider class="my-6"></v-divider>
 
+              <!-- App Update Section -->
+              <div class="pa-4 border rounded bg-surface-variant mb-6">
+                <div class="d-flex align-center justify-space-between flex-wrap gap-4 mb-3">
+                  <div class="d-flex align-center gap-3">
+                    <v-avatar color="primary" size="40" rounded>
+                      <v-icon icon="mdi-sync" color="white" size="22"></v-icon>
+                    </v-avatar>
+                    <div>
+                      <div class="font-weight-bold text-white d-flex align-center gap-2">
+                        {{ t('updater.checkUpdates', 'Kiểm tra Cập nhật') }}
+                        <v-chip size="x-small" color="primary" variant="flat">v{{ appVersion }}</v-chip>
+                      </div>
+                      <div class="text-caption text-medium-emphasis">
+                        {{ t('updater.autoCheckDesc', 'Tự động kiểm tra bản phát hành mới ngầm mỗi khi bạn khởi động August Guide') }}
+                      </div>
+                    </div>
+                  </div>
+
+                  <v-btn
+                    color="primary"
+                    variant="elevated"
+                    prepend-icon="mdi-refresh"
+                    :loading="isChecking"
+                    @click="handleManualCheckUpdate"
+                  >
+                    {{ t('updater.checkUpdates', 'Kiểm tra cập nhật') }}
+                  </v-btn>
+                </div>
+
+                <v-divider class="my-3"></v-divider>
+
+                <div class="d-flex align-center justify-space-between">
+                  <div class="text-caption text-medium-emphasis">
+                    {{ t('updater.autoCheckTitle', 'Tự động kiểm tra cập nhật khi mở ứng dụng') }}
+                  </div>
+                  <v-switch
+                    v-model="autoCheckUpdates"
+                    color="primary"
+                    density="compact"
+                    hide-details
+                    inset
+                  ></v-switch>
+                </div>
+              </div>
+
               <div class="d-flex align-center justify-space-between py-2">
                 <div>
                   <div class="font-weight-medium">App Version</div>
-                  <div class="text-caption text-medium-emphasis">Current installed version of August Mark</div>
+                  <div class="text-caption text-medium-emphasis">Current installed version of August Guide</div>
                 </div>
                 <div class="font-weight-bold text-white">{{ appVersion }}</div>
               </div>
@@ -735,6 +780,7 @@ import { useUiStore } from '@/stores/uiStore'
 import { getVersion } from '@tauri-apps/api/app'
 import { invoke } from '@tauri-apps/api/core'
 import { openAppFolder, getStorageInfo, migrateStorageLocation, resetStorageLocation, restartApp, type StorageInfo } from '@/services/tauriCommands'
+import { useAppUpdater } from '@/composables/useAppUpdater'
 import { useI18n } from '@/composables/useI18n'
 import { open as openDialog } from '@tauri-apps/plugin-dialog'
 import { open as shellOpen } from '@tauri-apps/plugin-shell'
@@ -743,11 +789,21 @@ const settingsStore = useSettingsStore()
 const projectStore = useProjectStore()
 const uiStore = useUiStore()
 const { t } = useI18n()
+const { checkForUpdates, isChecking } = useAppUpdater()
 
 const activeTab = ref('general')
 const appVersion = ref('Loading...')
 const dbSize = ref(0)
 const dbLocation = ref('Loading...')
+
+const autoCheckUpdates = computed({
+  get: () => settingsStore.getSettingValue<boolean>('auto_check_updates', true),
+  set: (val) => settingsStore.setSettingValue('auto_check_updates', val)
+})
+
+async function handleManualCheckUpdate() {
+  await checkForUpdates(false)
+}
 
 const storageInfo = ref<StorageInfo>({
   currentPath: '',

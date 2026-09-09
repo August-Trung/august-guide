@@ -28,6 +28,8 @@ release/
 .env.local
 .env.*.local
 !.env.example
+*.key
+src-tauri/updater.key
 
 # IDE & Editor Configs
 .vscode/*
