@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "August Guide",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "identifier": "com.august.guide",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -55,7 +55,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDUzQzBBNkI2QzJGQ0JGOUYKUldTZnYvekN0cWJBVTJPZDFsejZQazZlYnZ0NWtOTmpHTmE5REQ3VENGVUZ6YW5vdFozRVRXZk0K",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDQ2MTYyRUVEMTI3MUY5MjkKUldRcCtYRVM3UzRXUm9JdnZXc1hvdzErMXNCSVFzUjNiR0ZUZUNRSnJaaFFheGcySTBnSlJQZVkK",
       "endpoints": [
         "https://github.com/August-Trung/august-guide/releases/latest/download/latest.json"
       ]
