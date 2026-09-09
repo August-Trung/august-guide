@@ -146,6 +146,51 @@
                   hide-details
                 ></v-switch>
               </div>
+
+              <v-divider class="my-6"></v-divider>
+
+              <!-- Auto-save to custom directory -->
+              <div>
+                <div class="text-subtitle-1 font-weight-bold mb-1">{{ t('settingsView.autoSaveTitle') }}</div>
+                <div class="text-body-2 text-medium-emphasis mb-3">{{ t('settingsView.autoSaveDesc') }}</div>
+                <v-switch
+                  v-model="settingsStore.autoSaveToCustomDir"
+                  color="primary"
+                  inset
+                  hide-details
+                  class="mb-3"
+                ></v-switch>
+
+                <div v-if="settingsStore.autoSaveToCustomDir" class="d-flex align-center gap-3 mt-3">
+                  <v-text-field
+                    v-model="settingsStore.customSaveDir"
+                    :label="t('settingsView.customSaveDir')"
+                    :placeholder="t('settingsView.noFolderSelected')"
+                    variant="outlined"
+                    density="comfortable"
+                    hide-details
+                    readonly
+                    class="flex-grow-1"
+                    prepend-inner-icon="mdi-folder-outline"
+                  ></v-text-field>
+                  <v-btn
+                    color="primary"
+                    variant="tonal"
+                    prepend-icon="mdi-folder-open-outline"
+                    @click="handleSelectCustomDir"
+                  >
+                    {{ t('settingsView.browseFolder') }}
+                  </v-btn>
+                  <v-btn
+                    v-if="settingsStore.customSaveDir"
+                    icon="mdi-open-in-new"
+                    variant="text"
+                    color="primary"
+                    :title="t('settingsView.openFolder')"
+                    @click="handleOpenCustomDir"
+                  ></v-btn>
+                </div>
+              </div>
             </v-card>
           </v-window-item>
 
@@ -513,13 +558,17 @@
 import { ref, onMounted, computed } from 'vue'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useProjectStore } from '@/stores/projectStore'
+import { useUiStore } from '@/stores/uiStore'
 import { getVersion } from '@tauri-apps/api/app'
 import { invoke } from '@tauri-apps/api/core'
 import { openAppFolder } from '@/services/tauriCommands'
 import { useI18n } from '@/composables/useI18n'
+import { open as openDialog } from '@tauri-apps/plugin-dialog'
+import { open as shellOpen } from '@tauri-apps/plugin-shell'
 
 const settingsStore = useSettingsStore()
 const projectStore = useProjectStore()
+const uiStore = useUiStore()
 const { t } = useI18n()
 
 const activeTab = ref('general')
@@ -532,6 +581,35 @@ const openStorageFolder = async () => {
     await openAppFolder('root')
   } catch (e) {
     console.error('Failed to open storage folder:', e)
+  }
+}
+
+const handleSelectCustomDir = async () => {
+  try {
+    const selected = await openDialog({
+      directory: true,
+      multiple: false,
+      title: t('settingsView.browseFolder')
+    })
+    if (selected && typeof selected === 'string') {
+      settingsStore.customSaveDir = selected
+      uiStore.showToast({
+        message: `${t('settingsView.customSaveDir')}: ${selected}`,
+        type: 'success'
+      })
+    }
+  } catch (e: any) {
+    console.error('Failed to select directory:', e)
+  }
+}
+
+const handleOpenCustomDir = async () => {
+  if (settingsStore.customSaveDir) {
+    try {
+      await shellOpen(settingsStore.customSaveDir)
+    } catch (e) {
+      console.error('Failed to open directory:', e)
+    }
   }
 }
 

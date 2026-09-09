@@ -31,6 +31,7 @@
         v-model:collapsed="isBottomBarCollapsed"
         @copy="handleCopy"
         @save="handleDone"
+        @save-as="handleSaveAs"
       />
 
       <!-- Right side slide-in step notes drawer -->
@@ -290,6 +291,38 @@ const handleDone = async () => {
     await closeOverlay()
   } catch (e: any) {
     console.error('[OverlayApp] Failed to save guide annotations:', e?.message || e)
+  }
+}
+
+const handleSaveAs = async () => {
+  const merged = annotationCanvasRef.value?.getMergedCanvas?.()
+  if (!merged) return
+
+  try {
+    const { save } = await import('@tauri-apps/plugin-dialog')
+    const { saveImageToFile } = await import('@/services/tauriCommands')
+
+    const timestamp = new Date().toISOString().replace(/[-:T.]/g, '').slice(0, 14)
+    const filePath = await save({
+      defaultPath: `August_Guide_${timestamp}.png`,
+      filters: [{ name: 'Hình ảnh (PNG)', extensions: ['png'] }],
+      title: t('settingsView.saveAs') || 'Lưu ảnh ra file...'
+    })
+
+    if (filePath) {
+      const dataUrl = merged.toDataURL('image/png')
+      await saveImageToFile(filePath, dataUrl)
+      uiStore.showToast({
+        message: t('settingsView.imageSavedTo', { path: filePath }) || `Đã lưu ảnh vào: ${filePath}`,
+        type: 'success'
+      })
+    }
+  } catch (e: any) {
+    console.error('[OverlayApp] Failed to save image as:', e)
+    uiStore.showToast({
+      message: `Lỗi khi lưu ảnh: ${e?.message || String(e)}`,
+      type: 'error'
+    })
   }
 }
 

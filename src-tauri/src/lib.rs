@@ -109,6 +109,8 @@ pub fn run() {
             commands::gdrive_cmds::share_session_on_gdrive,
             commands::aacp_cmds::export_aacp_pack,
             commands::aacp_cmds::get_download_dir,
+            commands::capture_cmds::save_image_to_file,
+            commands::capture_cmds::auto_save_screenshot_copy,
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
@@ -119,7 +121,7 @@ pub fn run() {
                         let minimize = crate::db::settings_repo::get_setting(&conn, "minimize_to_tray")
                             .unwrap_or(None)
                             .map(|v| v == "true" || v == "\"true\"")
-                            .unwrap_or(false);
+                            .unwrap_or(true); // Default to true: run in background when closed
 
                         if minimize {
                             api.prevent_close();
@@ -234,8 +236,15 @@ pub fn run() {
                         if let TrayIconEvent::Click { button: tauri::tray::MouseButton::Left, .. } = event {
                             let app = tray.app_handle();
                             if let Some(window) = app.get_webview_window("main") {
-                                let _ = window.show();
-                                let _ = window.set_focus();
+                                let is_visible = window.is_visible().unwrap_or(false);
+                                let is_minimized = window.is_minimized().unwrap_or(false);
+                                if is_visible && !is_minimized {
+                                    let _ = window.hide();
+                                } else {
+                                    let _ = window.show();
+                                    let _ = window.unminimize();
+                                    let _ = window.set_focus();
+                                }
                             }
                         }
                     })

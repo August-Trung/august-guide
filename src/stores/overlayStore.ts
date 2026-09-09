@@ -41,19 +41,19 @@ export const useOverlayStore = defineStore('overlay', () => {
   const currentStrokeWidth = ref<number>(2)
 
   /**
-   * Reindexes numbers (1, 2, 3...) based on sequential step order (index + 1).
-   * If an annotation has showBadge: false (e.g. number deleted/hidden), its number is removed
-   * while keeping its position in the guide step sequence (e.g. rec 1, arrow, rec 3).
+   * Reindexes numbers (1, 2, 3...) sequentially ONLY for annotations with showBadge: true.
+   * If an annotation has showBadge: false (e.g. blur or number hidden/deleted), its number is removed.
    */
   function reindexAnnotations() {
-    annotations.value.forEach((ann, index) => {
+    let currentNumber = 1
+    annotations.value.forEach((ann) => {
       if (ann.showBadge) {
-        ann.number = index + 1
+        ann.number = currentNumber++
       } else {
         delete ann.number
       }
     })
-    nextMarkerNumber.value = annotations.value.length + 1
+    nextMarkerNumber.value = currentNumber
   }
 
   function init(id: string, path: string, info?: any) {
@@ -91,9 +91,9 @@ export const useOverlayStore = defineStore('overlay', () => {
   }
 
   function addAnnotation(annotation: Annotation) {
-    // By default all shapes and marks have badges enabled
+    // By default all shapes and marks have badges enabled except blur
     if (annotation.showBadge === undefined) {
-      annotation.showBadge = defaultShowBadge.value
+      annotation.showBadge = annotation.type === 'blur' ? false : defaultShowBadge.value
     }
 
     annotations.value.push(annotation)
@@ -246,6 +246,19 @@ export const useOverlayStore = defineStore('overlay', () => {
       const uiStore = useUiStore()
       uiStore.setLoading(true)
       await saveCaptureAnnotations(captureId.value, payloads, annotatedBase64)
+
+      if (annotatedBase64) {
+        try {
+          const { autoSaveScreenshotCopy } = await import('@/services/tauriCommands')
+          const savedPath = await autoSaveScreenshotCopy(annotatedBase64, guideTitle.value || 'August_Guide')
+          if (savedPath) {
+            console.log('[OverlayStore] Auto-saved screenshot copy to:', savedPath)
+          }
+        } catch (copyErr) {
+          console.error('[OverlayStore] Failed to auto-save screenshot copy:', copyErr)
+        }
+      }
+
       reset()
       const { t } = useI18n()
       uiStore.showToast({ message: t('toasts.annotationsSaved'), type: 'success' })

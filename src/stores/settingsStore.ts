@@ -153,8 +153,18 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   const minimizeToTray = computed({
-    get: () => getSettingValue<boolean>('minimize_to_tray', false),
+    get: () => getSettingValue<boolean>('minimize_to_tray', true),
     set: (value) => setSettingValue('minimize_to_tray', value)
+  })
+
+  const autoSaveToCustomDir = computed({
+    get: () => getSettingValue<boolean>('auto_save_to_custom_dir', false),
+    set: (value) => setSettingValue('auto_save_to_custom_dir', value)
+  })
+
+  const customSaveDir = computed({
+    get: () => getSettingValue<string>('custom_save_dir', ''),
+    set: (value) => setSettingValue('custom_save_dir', value)
   })
 
   const language = computed({
@@ -184,6 +194,8 @@ export const useSettingsStore = defineStore('settings', () => {
     restoreFrom,
     listBackups,
     minimizeToTray,
+    autoSaveToCustomDir,
+    customSaveDir,
     language
   }
 })

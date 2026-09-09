@@ -190,6 +190,17 @@
             <span>Copy</span>
           </button>
 
+          <!-- Save As File (Download) -->
+          <button
+            type="button"
+            class="action-pill-btn save-as-btn"
+            :title="t('settingsView.saveAsTooltip') || 'Lưu ảnh đã vẽ ra file trên máy tính'"
+            @click="emit('saveAs')"
+          >
+            <i class="mdi mdi-download"></i>
+            <span>Lưu file</span>
+          </button>
+
           <!-- Save (Ctrl+S) -->
           <button
             type="button"
@@ -241,6 +252,7 @@ const collapsed = defineModel<boolean>('collapsed', { default: false })
 const emit = defineEmits<{
   (e: 'copy'): void
   (e: 'save'): void
+  (e: 'saveAs'): void
 }>()
 
 const overlayStore = useOverlayStore()

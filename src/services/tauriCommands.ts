@@ -322,4 +322,13 @@ export async function uninstallApp(): Promise<void> {
   return invoke<void>('uninstall_app')
 }
 
+export async function saveImageToFile(filePath: string, base64Data: string): Promise<string> {
+  return invoke<string>('save_image_to_file', { filePath, base64Data })
+}
+
+export async function autoSaveScreenshotCopy(base64Data: string, title?: string): Promise<string | null> {
+  return invoke<string | null>('auto_save_screenshot_copy', { base64Data, title })
+}
+
+
 

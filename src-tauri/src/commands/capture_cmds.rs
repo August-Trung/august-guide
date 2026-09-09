@@ -269,3 +269,97 @@ pub fn log_from_js(msg: String) {
     println!("[Overlay JS] {}", msg);
 }
 
+/// Lưu ảnh từ chuỗi Base64 ra file theo đường dẫn chỉ định
+#[tauri::command]
+pub fn save_image_to_file(file_path: String, base64_data: String) -> AppResult<String> {
+    let clean_base64 = if base64_data.starts_with("data:") {
+        if let Some(comma_idx) = base64_data.find(',') {
+            &base64_data[comma_idx + 1..]
+        } else {
+            &base64_data
+        }
+    } else {
+        &base64_data
+    };
+
+    use base64::{Engine as _, engine::general_purpose};
+    let decoded_bytes = general_purpose::STANDARD
+        .decode(clean_base64)
+        .map_err(|e| AppError::Generic(format!("Failed to decode base64 image data: {}", e)))?;
+
+    let path = std::path::Path::new(&file_path);
+    if let Some(parent) = path.parent() {
+        if !parent.exists() {
+            std::fs::create_dir_all(parent)
+                .map_err(|e| AppError::FileIO(format!("Failed to create parent directory: {}", e)))?;
+        }
+    }
+
+    std::fs::write(path, &decoded_bytes)
+        .map_err(|e| AppError::FileIO(format!("Failed to write image file to {:?}: {}", path, e)))?;
+
+    Ok(file_path)
+}
+
+/// Tự động lưu bản sao ảnh chụp ra thư mục tùy chọn do người dùng cấu hình trong Settings
+#[tauri::command]
+pub fn auto_save_screenshot_copy(
+    state: State<'_, AppState>,
+    base64_data: String,
+    title: Option<String>,
+) -> AppResult<Option<String>> {
+    let conn = state
+        .db
+        .lock()
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+    let auto_save = crate::db::settings_repo::get_setting(&conn, "auto_save_to_custom_dir")
+        .unwrap_or(None)
+        .map(|v| v == "true" || v == "\"true\"")
+        .unwrap_or(false);
+
+    if !auto_save {
+        return Ok(None);
+    }
+
+    let custom_dir = crate::db::settings_repo::get_setting(&conn, "custom_save_dir")
+        .unwrap_or(None)
+        .map(|v| v.trim_matches('"').to_string())
+        .unwrap_or_default();
+
+    if custom_dir.trim().is_empty() {
+        return Ok(None);
+    }
+
+    let dir_path = std::path::PathBuf::from(&custom_dir);
+    if !dir_path.exists() {
+        std::fs::create_dir_all(&dir_path)
+            .map_err(|e| AppError::FileIO(format!("Failed to create custom save directory: {}", e)))?;
+    }
+
+    let timestamp = Utc::now().format("%Y%m%d_%H%M%S").to_string();
+    let safe_title = title
+        .unwrap_or_else(|| "Guide".to_string())
+        .chars()
+        .map(|c| if c.is_alphanumeric() || c == '-' || c == '_' || c == ' ' { c } else { '_' })
+        .collect::<String>()
+        .trim()
+        .replace(' ', "_");
+    
+    let file_name = if safe_title.is_empty() {
+        format!("Guide_{}.png", timestamp)
+    } else {
+        format!("{}_{}.png", safe_title, timestamp)
+    };
+
+    let target_file_path = dir_path.join(&file_name);
+    let target_str = target_file_path.to_string_lossy().to_string();
+
+    drop(conn); // Release DB lock before file IO
+
+    save_image_to_file(target_str.clone(), base64_data)?;
+
+    Ok(Some(target_str))
+}
+
+

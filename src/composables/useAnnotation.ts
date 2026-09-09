@@ -297,9 +297,6 @@ export function useAnnotation(
 
       const screenshotCanvas = drawingCanvasRef.value?.parentElement?.querySelector('.z-screenshot') as HTMLCanvasElement | null
       renderBlur(ctx, x, y, w, h, screenshotCanvas)
-      if (overlayStore.defaultShowBadge) {
-        renderMarker(ctx, x, y - 20, overlayStore.nextMarkerNumber, true, color)
-      }
     } else if (overlayStore.activeTool === 'highlight') {
       const x = Math.min(startPoint.value.x, coords.x)
       const y = Math.min(startPoint.value.y, coords.y)
@@ -435,7 +432,7 @@ export function useAnnotation(
           width,
           height,
           blurRadius: 8,
-          showBadge: overlayStore.defaultShowBadge,
+          showBadge: false,
           color,
           strokeWidth
         }
