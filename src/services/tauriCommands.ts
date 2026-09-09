@@ -152,11 +152,49 @@ export async function getCapturesBySession(sessionId: string): Promise<Capture[]
   return invoke<Capture[]>('get_captures_by_session', { sessionId })
 }
 
+export interface StorageInfo {
+  currentPath: string
+  defaultPath: string
+  isCustom: boolean
+  totalSizeBytes: number
+  dbSizeBytes: number
+  capturesSizeBytes: number
+  screenshotCount: number
+}
+
+/**
+ * Lấy thông tin vị trí lưu trữ dữ liệu và dung lượng.
+ */
+export async function getStorageInfo(): Promise<StorageInfo> {
+  return invoke<StorageInfo>('get_storage_info')
+}
+
+/**
+ * Di chuyển vị trí lưu trữ dữ liệu sang thư mục mới.
+ */
+export async function migrateStorageLocation(targetPath: string, copyData: boolean): Promise<void> {
+  return invoke<void>('migrate_storage_location', { targetPath, copyData })
+}
+
+/**
+ * Khôi phục vị trí lưu trữ về mặc định (%APPDATA%).
+ */
+export async function resetStorageLocation(copyData: boolean): Promise<void> {
+  return invoke<void>('reset_storage_location', { copyData })
+}
+
+/**
+ * Khởi động lại ứng dụng.
+ */
+export async function restartApp(): Promise<void> {
+  return invoke<void>('restart_app')
+}
+
 /**
  * Mở thư mục lưu ảnh của ứng dụng trong File Explorer.
  */
-export async function openAppFolder(folderType?: string): Promise<void> {
-  return invoke<void>('open_app_folder', { folderType })
+export async function openAppFolder(folderType?: string, customPath?: string): Promise<void> {
+  return invoke<void>('open_app_folder', { folderType, customPath })
 }
 
 // ============================================================================

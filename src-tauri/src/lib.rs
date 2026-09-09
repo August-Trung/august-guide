@@ -92,6 +92,10 @@ pub fn run() {
             commands::settings_cmds::get_setting,
             commands::settings_cmds::update_setting,
             commands::app_cmds::get_app_stats,
+            commands::app_cmds::get_storage_info,
+            commands::app_cmds::migrate_storage_location,
+            commands::app_cmds::reset_storage_location,
+            commands::app_cmds::restart_app,
             commands::app_cmds::uninstall_app,
             commands::app_cmds::open_app_folder,
             commands::tag_cmds::get_all_tags,
@@ -137,11 +141,41 @@ pub fn run() {
                 log::info!("August Guide starting in debug mode");
             }
 
-            // Resolve local app data directory (e.g. AppData/Roaming/August Guide)
-            let app_data_dir = app
+            // Resolve default app data directory (e.g. AppData/Roaming/com.august.guide)
+            let default_app_data_dir = app
                 .path()
                 .app_data_dir()
                 .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
+
+            // Check if a custom storage location was configured in storage_config.json
+            let config_path = default_app_data_dir.join("storage_config.json");
+            let app_data_dir = if config_path.exists() {
+                if let Ok(content) = std::fs::read_to_string(&config_path) {
+                    if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&content) {
+                        if let Some(custom_dir) = parsed.get("customDataDir").and_then(|v| v.as_str()) {
+                            if !custom_dir.trim().is_empty() {
+                                std::path::PathBuf::from(custom_dir)
+                            } else {
+                                default_app_data_dir.clone()
+                            }
+                        } else if let Some(custom_dir) = parsed.get("custom_data_dir").and_then(|v| v.as_str()) {
+                            if !custom_dir.trim().is_empty() {
+                                std::path::PathBuf::from(custom_dir)
+                            } else {
+                                default_app_data_dir.clone()
+                            }
+                        } else {
+                            default_app_data_dir.clone()
+                        }
+                    } else {
+                        default_app_data_dir.clone()
+                    }
+                } else {
+                    default_app_data_dir.clone()
+                }
+            } else {
+                default_app_data_dir.clone()
+            };
 
             // Ensure database base directory and asset subdirectories exist
             db::ensure_app_dirs(&app_data_dir)?;
@@ -185,7 +219,7 @@ pub fn run() {
                     });
                 }
 
-                // System Tray Setup (T1.05)
+                // System Tray Setup
                 let quit_i = MenuItemBuilder::with_id("quit", "Thoát").build(app)?;
                 let capture_i = MenuItemBuilder::with_id("capture", "Chụp màn hình").build(app)?;
                 let open_i = MenuItemBuilder::with_id("open", "Mở August Guide").build(app)?;
@@ -199,13 +233,8 @@ pub fn run() {
                     .item(&quit_i)
                     .build()?;
 
-                let mut tray_builder = TrayIconBuilder::new().menu(&menu);
-                if let Some(icon) = app.default_window_icon() {
-                    tray_builder = tray_builder.icon(icon.clone());
-                } else {
-                    let fallback_icon = tauri::include_image!("icons/32x32.png");
-                    tray_builder = tray_builder.icon(fallback_icon);
-                }
+                let tray_icon = tauri::include_image!("icons/32x32.png");
+                let tray_builder = TrayIconBuilder::new().menu(&menu).icon(tray_icon);
 
                 let _tray = tray_builder
                     .on_menu_event(move |app, event| {
@@ -219,12 +248,14 @@ pub fn run() {
                             "open" => {
                                 if let Some(window) = app.get_webview_window("main") {
                                     let _ = window.show();
+                                    let _ = window.unminimize();
                                     let _ = window.set_focus();
                                 }
                             }
                             "settings" => {
                                 if let Some(window) = app.get_webview_window("main") {
                                     let _ = window.show();
+                                    let _ = window.unminimize();
                                     let _ = window.set_focus();
                                     let _ = window.emit("navigate", "/settings");
                                 }
@@ -233,7 +264,12 @@ pub fn run() {
                         }
                     })
                     .on_tray_icon_event(|tray, event| {
-                        if let TrayIconEvent::Click { button: tauri::tray::MouseButton::Left, .. } = event {
+                        if let TrayIconEvent::Click {
+                            button: tauri::tray::MouseButton::Left,
+                            button_state: tauri::tray::MouseButtonState::Up,
+                            ..
+                        } = event
+                        {
                             let app = tray.app_handle();
                             if let Some(window) = app.get_webview_window("main") {
                                 let is_visible = window.is_visible().unwrap_or(false);

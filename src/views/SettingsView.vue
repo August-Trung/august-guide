@@ -74,6 +74,81 @@
                   :loading="projectStore.isLoading"
                 ></v-select>
               </div>
+
+              <v-divider class="my-6"></v-divider>
+
+              <!-- Primary Data Storage Directory -->
+              <div>
+                <div class="d-flex align-center justify-space-between mb-1">
+                  <div class="text-subtitle-1 font-weight-bold">{{ t('settingsView.storageLocationTitle') }}</div>
+                  <v-chip
+                    :color="storageInfo.isCustom ? 'warning' : 'primary'"
+                    size="small"
+                    variant="tonal"
+                    class="font-weight-medium"
+                  >
+                    <v-icon :icon="storageInfo.isCustom ? 'mdi-harddisk' : 'mdi-folder-home'" start size="16"></v-icon>
+                    {{ storageInfo.isCustom ? t('settingsView.customDriveBadge') : t('settingsView.defaultDriveBadge') }}
+                  </v-chip>
+                </div>
+                <div class="text-body-2 text-medium-emphasis mb-4">{{ t('settingsView.storageLocationDesc') }}</div>
+
+                <div class="pa-4 border rounded bg-surface-variant mb-4">
+                  <div class="text-caption text-medium-emphasis mb-1">{{ t('settingsView.currentStorageDir') }}</div>
+                  <div class="d-flex align-center gap-2 mb-3">
+                    <v-icon icon="mdi-folder" color="primary" size="20"></v-icon>
+                    <span class="text-body-2 font-weight-bold text-white text-truncate font-monospace">
+                      {{ storageInfo.currentPath || dbLocation }}
+                    </span>
+                  </div>
+
+                  <div class="d-flex align-center flex-wrap gap-4 text-caption text-medium-emphasis pt-2 border-t">
+                    <div>
+                      <v-icon icon="mdi-database" size="14" class="mr-1"></v-icon>
+                      {{ t('settingsView.dbSizeLabel') }}: <strong class="text-white">{{ formatBytes(storageInfo.dbSizeBytes || dbSize) }}</strong>
+                    </div>
+                    <div>
+                      <v-icon icon="mdi-image-multiple" size="14" class="mr-1"></v-icon>
+                      {{ t('settingsView.capturesSizeLabel') }}: <strong class="text-white">{{ formatBytes(storageInfo.capturesSizeBytes) }}</strong>
+                      ({{ storageInfo.screenshotCount }} files)
+                    </div>
+                    <div>
+                      <v-icon icon="mdi-chart-arc" size="14" class="mr-1"></v-icon>
+                      {{ t('settingsView.storageStats') }}: <strong class="text-primary">{{ formatBytes(storageInfo.totalSizeBytes) }}</strong>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="d-flex align-center flex-wrap gap-3">
+                  <v-btn
+                    color="primary"
+                    variant="elevated"
+                    prepend-icon="mdi-folder-edit-outline"
+                    @click="handleSelectNewStorageDir"
+                  >
+                    {{ t('settingsView.changeStorageDir') }}
+                  </v-btn>
+
+                  <v-btn
+                    variant="tonal"
+                    color="primary"
+                    prepend-icon="mdi-folder-open-outline"
+                    @click="openStorageFolder"
+                  >
+                    {{ t('settingsView.openFolder') }}
+                  </v-btn>
+
+                  <v-btn
+                    v-if="storageInfo.isCustom"
+                    variant="outlined"
+                    color="warning"
+                    prepend-icon="mdi-restore"
+                    @click="showResetModal = true"
+                  >
+                    {{ t('settingsView.resetStorageDir') }}
+                  </v-btn>
+                </div>
+              </div>
             </v-card>
           </v-window-item>
 
@@ -536,6 +611,104 @@
       </v-card>
     </v-dialog>
 
+    <!-- Storage Migration Confirmation Dialog -->
+    <v-dialog v-model="showMigrateModal" max-width="560" persistent>
+      <v-card border>
+        <v-card-title class="text-h6 font-weight-bold py-4 px-6 border-b text-primary d-flex align-center">
+          <v-icon icon="mdi-folder-swap" color="primary" class="mr-2"></v-icon>
+          {{ t('settingsView.migrateModalTitle') }}
+        </v-card-title>
+        <v-card-text class="pa-6">
+          <p class="text-body-2 text-medium-emphasis mb-2">
+            {{ t('settingsView.migrateModalDesc') }}
+          </p>
+          <div class="pa-3 border rounded bg-surface-variant font-monospace text-body-2 font-weight-bold text-white mb-4 text-truncate">
+            {{ targetStorageDir }}
+          </div>
+
+          <v-checkbox
+            v-model="copyExistingData"
+            :label="t('settingsView.copyDataOption')"
+            color="primary"
+            hide-details
+            class="mb-4"
+          ></v-checkbox>
+
+          <v-alert
+            type="info"
+            variant="tonal"
+            density="comfortable"
+            icon="mdi-information-outline"
+            class="mb-0"
+          >
+            {{ t('settingsView.restartNotice') }}
+          </v-alert>
+        </v-card-text>
+        <v-card-actions class="py-4 px-6 border-t d-flex justify-end gap-2">
+          <v-btn variant="text" :disabled="isMigrating" @click="showMigrateModal = false">
+            {{ t('common.cancel') }}
+          </v-btn>
+          <v-btn
+            color="primary"
+            variant="elevated"
+            prepend-icon="mdi-check"
+            :loading="isMigrating"
+            @click="handleExecuteMigration"
+          >
+            {{ t('settingsView.migrateConfirmBtn') }}
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Storage Reset Dialog -->
+    <v-dialog v-model="showResetModal" max-width="520" persistent>
+      <v-card border>
+        <v-card-title class="text-h6 font-weight-bold py-4 px-6 border-b text-warning d-flex align-center">
+          <v-icon icon="mdi-restore" color="warning" class="mr-2"></v-icon>
+          {{ t('settingsView.resetModalTitle') }}
+        </v-card-title>
+        <v-card-text class="pa-6">
+          <p class="text-body-2 text-medium-emphasis mb-3">
+            {{ t('settingsView.resetModalDesc') }}
+          </p>
+          <div class="pa-3 border rounded bg-surface-variant font-monospace text-caption text-white mb-4 text-truncate">
+            {{ storageInfo.defaultPath }}
+          </div>
+
+          <v-checkbox
+            v-model="copyDataOnReset"
+            :label="t('settingsView.copyDataOption')"
+            color="warning"
+            hide-details
+            class="mb-4"
+          ></v-checkbox>
+
+          <v-alert
+            type="warning"
+            variant="tonal"
+            density="comfortable"
+            class="mb-0"
+          >
+            {{ t('settingsView.restartNotice') }}
+          </v-alert>
+        </v-card-text>
+        <v-card-actions class="py-4 px-6 border-t d-flex justify-end gap-2">
+          <v-btn variant="text" :disabled="isResetting" @click="showResetModal = false">
+            {{ t('common.cancel') }}
+          </v-btn>
+          <v-btn
+            color="warning"
+            variant="elevated"
+            :loading="isResetting"
+            @click="handleExecuteReset"
+          >
+            {{ t('common.confirm') }}
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Error Toast Notification -->
     <v-snackbar v-model="showError" color="error" timeout="6000" location="top">
       {{ errorMessage }}
@@ -561,7 +734,7 @@ import { useProjectStore } from '@/stores/projectStore'
 import { useUiStore } from '@/stores/uiStore'
 import { getVersion } from '@tauri-apps/api/app'
 import { invoke } from '@tauri-apps/api/core'
-import { openAppFolder } from '@/services/tauriCommands'
+import { openAppFolder, getStorageInfo, migrateStorageLocation, resetStorageLocation, restartApp, type StorageInfo } from '@/services/tauriCommands'
 import { useI18n } from '@/composables/useI18n'
 import { open as openDialog } from '@tauri-apps/plugin-dialog'
 import { open as shellOpen } from '@tauri-apps/plugin-shell'
@@ -576,11 +749,98 @@ const appVersion = ref('Loading...')
 const dbSize = ref(0)
 const dbLocation = ref('Loading...')
 
+const storageInfo = ref<StorageInfo>({
+  currentPath: '',
+  defaultPath: '',
+  isCustom: false,
+  totalSizeBytes: 0,
+  dbSizeBytes: 0,
+  capturesSizeBytes: 0,
+  screenshotCount: 0,
+})
+
+const showMigrateModal = ref(false)
+const showResetModal = ref(false)
+const targetStorageDir = ref('')
+const copyExistingData = ref(true)
+const copyDataOnReset = ref(true)
+const isMigrating = ref(false)
+const isResetting = ref(false)
+
+async function loadStorageData() {
+  try {
+    const info = await getStorageInfo()
+    storageInfo.value = info
+    dbLocation.value = info.currentPath
+    dbSize.value = info.dbSizeBytes
+  } catch (e) {
+    console.error('Failed to get storage info:', e)
+  }
+}
+
 const openStorageFolder = async () => {
   try {
     await openAppFolder('root')
   } catch (e) {
     console.error('Failed to open storage folder:', e)
+  }
+}
+
+async function handleSelectNewStorageDir() {
+  try {
+    const selected = await openDialog({
+      directory: true,
+      multiple: false,
+      title: t('settingsView.changeStorageDir')
+    })
+    if (selected && typeof selected === 'string') {
+      targetStorageDir.value = selected
+      copyExistingData.value = true
+      showMigrateModal.value = true
+    }
+  } catch (e: any) {
+    console.error('Failed to select directory:', e)
+  }
+}
+
+async function handleExecuteMigration() {
+  if (!targetStorageDir.value) return
+  isMigrating.value = true
+  try {
+    await migrateStorageLocation(targetStorageDir.value, copyExistingData.value)
+    uiStore.showToast({
+      message: 'Đã đổi vị trí lưu trữ! Ứng dụng đang khởi động lại...',
+      type: 'success'
+    })
+    setTimeout(async () => {
+      await restartApp()
+    }, 1200)
+  } catch (e: any) {
+    console.error('Migration failed:', e)
+    errorMessage.value = e?.message || e || 'Không thể di chuyển vị trí lưu trữ'
+    showError.value = true
+    isMigrating.value = false
+    showMigrateModal.value = false
+  }
+}
+
+async function handleExecuteReset() {
+  isResetting.value = true
+  try {
+    await resetStorageLocation(copyDataOnReset.value)
+    uiStore.showToast({
+      message: 'Đã khôi phục vị trí mặc định! Ứng dụng đang khởi động lại...',
+      type: 'success'
+    })
+    setTimeout(async () => {
+      await restartApp()
+    }, 1200)
+  } catch (e: any) {
+    console.error('Reset failed:', e)
+    errorMessage.value = e?.message || e || 'Không thể khôi phục vị trí mặc định'
+    showError.value = true
+    isResetting.value = false
+    showResetModal.value = false
   }
 }
 
@@ -655,6 +915,8 @@ onMounted(async () => {
   if (projectStore.projects.length === 0) {
     await projectStore.fetchProjects()
   }
+
+  await loadStorageData()
 
   try {
     appVersion.value = await getVersion()
