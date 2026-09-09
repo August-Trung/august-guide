@@ -35,7 +35,7 @@
           <div class="text-h6 font-weight-bold text-secondary">
             {{ session.issueCount || 0 }}
           </div>
-          <div class="text-caption text-medium-emphasis text-uppercase">{{ t('common.issues', 'Issues') }}</div>
+          <div class="text-caption text-medium-emphasis text-uppercase">{{ t('common.steps', 'Steps') }}</div>
         </v-col>
       </v-row>
     </v-card-item>

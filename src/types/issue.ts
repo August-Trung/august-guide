@@ -27,6 +27,8 @@ export interface Issue {
   color: string
   strokeWidth: number
   cropPath: string | null
+  screenshotPath?: string | null
+  annotatedScreenshotPath?: string | null
   createdAt: string
   updatedAt: string
   tags?: Tag[]

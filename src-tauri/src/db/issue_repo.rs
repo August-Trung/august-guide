@@ -36,12 +36,17 @@ pub fn get_tags_for_issue(conn: &Connection, issue_id: &str) -> AppResult<Vec<Ta
 pub fn get_issue(conn: &Connection, id: &str) -> AppResult<Issue> {
     let mut issue = conn
         .query_row(
-            "SELECT id, capture_id, session_id, project_id, marker_number, title, description,
-                    issue_type, severity, status, marker_x, marker_y, annotation_data,
-                    color, stroke_width, crop_path, created_at, updated_at
-             FROM issues WHERE id = ?1 AND is_deleted = 0",
+            "SELECT i.id, i.capture_id, i.session_id, i.project_id, i.marker_number, i.title, i.description,
+                    i.issue_type, i.severity, i.status, i.marker_x, i.marker_y, i.annotation_data,
+                    i.color, i.stroke_width, i.crop_path, i.created_at, i.updated_at,
+                    c.screenshot_path
+             FROM issues i
+             LEFT JOIN captures c ON i.capture_id = c.id
+             WHERE i.id = ?1 AND i.is_deleted = 0",
             params![id],
             |row| {
+                let screenshot_path: Option<String> = row.get(18)?;
+                let annotated_screenshot_path = screenshot_path.as_ref().map(|sp| sp.replace(".png", "_annotated.png"));
                 Ok(Issue {
                     id: row.get(0)?,
                     capture_id: row.get(1)?,
@@ -59,6 +64,8 @@ pub fn get_issue(conn: &Connection, id: &str) -> AppResult<Issue> {
                     color: row.get(13)?,
                     stroke_width: row.get(14)?,
                     crop_path: row.get(15)?,
+                    screenshot_path,
+                    annotated_screenshot_path,
                     created_at: row.get(16)?,
                     updated_at: row.get(17)?,
                     tags: None,
@@ -81,17 +88,21 @@ pub fn get_issue(conn: &Connection, id: &str) -> AppResult<Issue> {
 pub fn get_by_session(conn: &Connection, session_id: &str) -> AppResult<Vec<Issue>> {
     let mut stmt = conn
         .prepare(
-            "SELECT id, capture_id, session_id, project_id, marker_number, title, description,
-                    issue_type, severity, status, marker_x, marker_y, annotation_data,
-                    color, stroke_width, crop_path, created_at, updated_at
-             FROM issues
-             WHERE session_id = ?1 AND is_deleted = 0
-             ORDER BY marker_number ASC",
+            "SELECT i.id, i.capture_id, i.session_id, i.project_id, i.marker_number, i.title, i.description,
+                    i.issue_type, i.severity, i.status, i.marker_x, i.marker_y, i.annotation_data,
+                    i.color, i.stroke_width, i.crop_path, i.created_at, i.updated_at,
+                    c.screenshot_path
+             FROM issues i
+             LEFT JOIN captures c ON i.capture_id = c.id
+             WHERE i.session_id = ?1 AND i.is_deleted = 0
+             ORDER BY i.marker_number ASC",
         )
         .map_err(|e| AppError::Database(format!("Failed to prepare get_by_session statement: {}", e)))?;
 
     let issue_iter = stmt
         .query_map(params![session_id], |row| {
+            let screenshot_path: Option<String> = row.get(18)?;
+            let annotated_screenshot_path = screenshot_path.as_ref().map(|sp| sp.replace(".png", "_annotated.png"));
             Ok(Issue {
                 id: row.get(0)?,
                 capture_id: row.get(1)?,
@@ -109,6 +120,8 @@ pub fn get_by_session(conn: &Connection, session_id: &str) -> AppResult<Vec<Issu
                 color: row.get(13)?,
                 stroke_width: row.get(14)?,
                 crop_path: row.get(15)?,
+                screenshot_path,
+                annotated_screenshot_path,
                 created_at: row.get(16)?,
                 updated_at: row.get(17)?,
                 tags: None,
@@ -130,17 +143,21 @@ pub fn get_by_session(conn: &Connection, session_id: &str) -> AppResult<Vec<Issu
 pub fn get_by_capture(conn: &Connection, capture_id: &str) -> AppResult<Vec<Issue>> {
     let mut stmt = conn
         .prepare(
-            "SELECT id, capture_id, session_id, project_id, marker_number, title, description,
-                    issue_type, severity, status, marker_x, marker_y, annotation_data,
-                    color, stroke_width, crop_path, created_at, updated_at
-             FROM issues
-             WHERE capture_id = ?1 AND is_deleted = 0
-             ORDER BY marker_number ASC",
+            "SELECT i.id, i.capture_id, i.session_id, i.project_id, i.marker_number, i.title, i.description,
+                    i.issue_type, i.severity, i.status, i.marker_x, i.marker_y, i.annotation_data,
+                    i.color, i.stroke_width, i.crop_path, i.created_at, i.updated_at,
+                    c.screenshot_path
+             FROM issues i
+             LEFT JOIN captures c ON i.capture_id = c.id
+             WHERE i.capture_id = ?1 AND i.is_deleted = 0
+             ORDER BY i.marker_number ASC",
         )
         .map_err(|e| AppError::Database(format!("Failed to prepare get_by_capture statement: {}", e)))?;
 
     let issue_iter = stmt
         .query_map(params![capture_id], |row| {
+            let screenshot_path: Option<String> = row.get(18)?;
+            let annotated_screenshot_path = screenshot_path.as_ref().map(|sp| sp.replace(".png", "_annotated.png"));
             Ok(Issue {
                 id: row.get(0)?,
                 capture_id: row.get(1)?,
@@ -158,6 +175,8 @@ pub fn get_by_capture(conn: &Connection, capture_id: &str) -> AppResult<Vec<Issu
                 color: row.get(13)?,
                 stroke_width: row.get(14)?,
                 crop_path: row.get(15)?,
+                screenshot_path,
+                annotated_screenshot_path,
                 created_at: row.get(16)?,
                 updated_at: row.get(17)?,
                 tags: None,

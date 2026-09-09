@@ -1,4 +1,4 @@
-﻿import { useSettingsStore } from '@/stores/settingsStore'
+import { useSettingsStore } from '@/stores/settingsStore'
 import { computed } from 'vue'
 
 const translations: Record<string, any> = {
@@ -42,7 +42,12 @@ const translations: Record<string, any> = {
       projectColorAccent: 'Project Color Accent',
       rename: 'Rename',
       complete: 'Complete',
-      noDescription: 'No description provided'
+      noDescription: 'No description provided',
+      step: 'Step',
+      steps: 'Steps',
+      screenshots: 'Screenshots',
+      issues: 'Steps',
+      open: 'Open'
     },
     sidebar: {
       activeProject: 'Active Project',
@@ -224,7 +229,12 @@ const translations: Record<string, any> = {
       openDbFolder: 'Open Database Folder',
       delayedCapture: 'Delayed / Timed Capture',
       delayedCaptureDesc: 'Add a countdown timer delay before capturing the screen to prepare application state',
-      delayedNone: 'None (Immediate)'
+      delayedNone: 'None (Immediate)',
+      totalProjects: 'Total Projects',
+      totalSessions: 'Total Guides',
+      totalSteps: 'Steps Recorded',
+      issuesLogged: 'Steps Recorded',
+      restoreWarningDesc: 'This will delete all current guide documents, steps, and screenshots on your device and replace them with the data from the backup.'
     },
     overlay: {
       saveIssue: 'Save Step',
@@ -272,7 +282,8 @@ const translations: Record<string, any> = {
       openSettings: 'Open Settings',
       totalProjects: 'Projects',
       totalSessions: 'Guides',
-      issuesLogged: 'Steps Logged'
+      totalSteps: 'Steps Recorded',
+      issuesLogged: 'Steps Recorded'
     },
     severities: {
       Critical: 'Crucial',
@@ -375,7 +386,12 @@ const translations: Record<string, any> = {
       projectColorAccent: 'Màu sắc Dự án',
       rename: 'Đổi tên',
       complete: 'Hoàn thành',
-      noDescription: 'Chưa có mô tả chi tiết'
+      noDescription: 'Chưa có mô tả chi tiết',
+      step: 'Bước',
+      steps: 'Bước',
+      screenshots: 'Ảnh chụp',
+      issues: 'Bước',
+      open: 'Xem'
     },
     sidebar: {
       activeProject: 'Dự án đang mở',
@@ -557,7 +573,12 @@ const translations: Record<string, any> = {
       openDbFolder: 'Mở Thư mục Cơ sở Dữ liệu',
       delayedCapture: 'Hẹn giờ chụp màn hình',
       delayedCaptureDesc: 'Thêm thời gian chờ đếm ngược trước khi chụp để chuẩn bị trạng thái màn hình cần ghi chú',
-      delayedNone: 'Không (Chụp ngay lập tức)'
+      delayedNone: 'Không (Chụp ngay lập tức)',
+      totalProjects: 'Tổng số dự án',
+      totalSessions: 'Tổng số bài hướng dẫn',
+      totalSteps: 'Tổng số bước đã tạo',
+      issuesLogged: 'Tổng số bước đã tạo',
+      restoreWarningDesc: 'Hành động này sẽ xóa toàn bộ các bài hướng dẫn, các bước thực hiện và ảnh chụp hiện tại trên thiết bị của bạn và thay thế bằng dữ liệu từ bản sao lưu.'
     },
     overlay: {
       saveIssue: 'Lưu Bước',
@@ -605,7 +626,8 @@ const translations: Record<string, any> = {
       openSettings: 'Mở Cài đặt',
       totalProjects: 'Dự án',
       totalSessions: 'Bài hướng dẫn',
-      issuesLogged: 'Số bước đã lưu'
+      totalSteps: 'Tổng số bước hướng dẫn',
+      issuesLogged: 'Tổng số bước hướng dẫn'
     },
     severities: {
       Critical: 'Đặc biệt quan trọng',

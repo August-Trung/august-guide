@@ -301,6 +301,9 @@ const cropUrl = computed(() => {
 })
 
 const annotatedUrl = computed(() => {
+  if (props.issue.annotatedScreenshotPath) {
+    return convertFileSrc(props.issue.annotatedScreenshotPath)
+  }
   if (!screenshotPath.value) return ''
   // Annotated screenshot path has _annotated.png suffix
   const annotatedPath = screenshotPath.value.replace('.png', '_annotated.png')

@@ -82,7 +82,7 @@ const stats = ref({
 const statCards = computed(() => [
   { title: t('aboutView.totalProjects', 'Projects'), value: stats.value.projects, icon: 'mdi-folder', color: 'primary' },
   { title: t('aboutView.totalSessions', 'Sessions'), value: stats.value.sessions, icon: 'mdi-clipboard-list', color: 'secondary' },
-  { title: t('aboutView.issuesLogged', 'Issues Logged'), value: stats.value.issues, icon: 'mdi-alert-circle', color: 'error' }
+  { title: t('aboutView.totalSteps', 'Steps Recorded'), value: stats.value.issues, icon: 'mdi-format-list-numbered', color: 'info' }
 ])
 
 onMounted(async () => {

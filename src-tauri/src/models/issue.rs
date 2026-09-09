@@ -27,6 +27,8 @@ pub struct Issue {
     pub color: String,
     pub stroke_width: f64,
     pub crop_path: Option<String>,
+    pub screenshot_path: Option<String>,
+    pub annotated_screenshot_path: Option<String>,
     pub created_at: String,
     pub updated_at: String,
     pub tags: Option<Vec<Tag>>,

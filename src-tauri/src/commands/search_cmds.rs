@@ -59,16 +59,20 @@ pub fn search_all(
 
     // 2. Search Issues
     let mut issue_stmt = conn.prepare(
-        "SELECT id, capture_id, session_id, project_id, marker_number, title, description,
-                issue_type, severity, status, marker_x, marker_y, annotation_data,
-                color, stroke_width, crop_path, created_at, updated_at
-         FROM issues
-         WHERE is_deleted = 0 AND (LOWER(title) LIKE ?1 OR LOWER(description) LIKE ?1)
-         ORDER BY created_at DESC"
+        "SELECT i.id, i.capture_id, i.session_id, i.project_id, i.marker_number, i.title, i.description,
+                i.issue_type, i.severity, i.status, i.marker_x, i.marker_y, i.annotation_data,
+                i.color, i.stroke_width, i.crop_path, i.created_at, i.updated_at,
+                c.screenshot_path
+         FROM issues i
+         LEFT JOIN captures c ON i.capture_id = c.id
+         WHERE i.is_deleted = 0 AND (LOWER(i.title) LIKE ?1 OR LOWER(i.description) LIKE ?1)
+         ORDER BY i.created_at DESC"
     ).map_err(|e| AppError::Database(format!("Failed to prepare search issues statement: {}", e)))?;
 
     let issue_iter = issue_stmt
         .query_map([&like_query], |row| {
+            let screenshot_path: Option<String> = row.get(18)?;
+            let annotated_screenshot_path = screenshot_path.as_ref().map(|sp| sp.replace(".png", "_annotated.png"));
             Ok(Issue {
                 id: row.get(0)?,
                 capture_id: row.get(1)?,
@@ -86,6 +90,8 @@ pub fn search_all(
                 color: row.get(13)?,
                 stroke_width: row.get(14)?,
                 crop_path: row.get(15)?,
+                screenshot_path,
+                annotated_screenshot_path,
                 created_at: row.get(16)?,
                 updated_at: row.get(17)?,
                 tags: None,

@@ -475,7 +475,7 @@
           Are you absolutely sure?
         </v-card-title>
         <v-card-text class="pa-6">
-          This will delete all current sessions, issues, and screenshots on your device and replace them with the data from the backup.
+          {{ t('settingsView.restoreWarningDesc', 'This will delete all current guide documents, steps, and screenshots on your device and replace them with the data from the backup.') }}
         </v-card-text>
         <v-card-actions class="py-4 px-6 border-t d-flex justify-end gap-2">
           <v-btn variant="text" @click="confirmDialog = false">Cancel</v-btn>
@@ -569,7 +569,7 @@ const projects = computed(() => projectStore.projects)
 const statCards = computed(() => [
   { title: t('settingsView.totalProjects', 'Total Projects'), value: stats.value.projects, icon: 'mdi-folder', color: 'primary' },
   { title: t('settingsView.totalSessions', 'Total Sessions'), value: stats.value.sessions, icon: 'mdi-clipboard-list', color: 'secondary' },
-  { title: t('settingsView.issuesLogged', 'Issues Logged'), value: stats.value.issues, icon: 'mdi-alert-circle', color: 'error' }
+  { title: t('settingsView.totalSteps', 'Steps Recorded'), value: stats.value.issues, icon: 'mdi-format-list-numbered', color: 'info' }
 ])
 
 onMounted(async () => {

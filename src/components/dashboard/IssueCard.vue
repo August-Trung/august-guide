@@ -5,14 +5,14 @@
     color="surface-variant"
     @click="navigateToDetail"
   >
-    <!-- Thumbnail Image -->
+    <!-- Full Annotated Screenshot / Thumbnail Image -->
     <div class="thumbnail-wrapper">
       <v-img
-        v-if="cropUrl"
-        :src="cropUrl"
+        v-if="displayImageUrl"
+        :src="displayImageUrl"
         cover
         class="thumbnail-img"
-        height="160"
+        height="180"
       >
         <template v-slot:placeholder>
           <div class="d-flex align-center justify-center fill-height bg-grey-darken-3">
@@ -20,7 +20,7 @@
           </div>
         </template>
       </v-img>
-      <div v-else class="no-thumbnail d-flex align-center justify-center bg-grey-darken-3" style="height: 160px;">
+      <div v-else class="no-thumbnail d-flex align-center justify-center bg-grey-darken-3" style="height: 180px;">
         <v-icon size="36" color="medium-emphasis">mdi-image-off</v-icon>
       </div>
 
@@ -121,9 +121,17 @@ defineEmits<{
 const { t } = useI18n()
 const router = useRouter()
 
-const cropUrl = computed(() => {
-  if (!props.issue.cropPath) return ''
-  return convertFileSrc(props.issue.cropPath)
+const displayImageUrl = computed(() => {
+  if (props.issue.annotatedScreenshotPath) {
+    return convertFileSrc(props.issue.annotatedScreenshotPath)
+  }
+  if (props.issue.screenshotPath) {
+    return convertFileSrc(props.issue.screenshotPath)
+  }
+  if (props.issue.cropPath) {
+    return convertFileSrc(props.issue.cropPath)
+  }
+  return ''
 })
 
 const navigateToDetail = () => {

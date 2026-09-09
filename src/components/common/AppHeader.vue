@@ -176,12 +176,15 @@ const performSearch = async (val: string) => {
       })
     }
 
-    // Map issues
+    // Map steps
     for (const iss of res.issues) {
+      const typeLabel = t('issueTypes.' + iss.issueType, iss.issueType)
+      const sevLabel = t('severities.' + iss.severity, iss.severity)
+      const statLabel = t('statuses.' + iss.status, iss.status)
       items.push({
         id: iss.id,
         title: `[#${iss.markerNumber}] ${iss.title}`,
-        subtitle: `${iss.issueType} • ${iss.severity} • ${iss.status}`,
+        subtitle: `${typeLabel} • ${sevLabel} • ${statLabel}`,
         type: 'issue',
         sessionId: iss.sessionId
       })
