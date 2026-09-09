@@ -55,7 +55,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDQ2MTYyRUVEMTI3MUY5MjkKUldRcCtYRVM3UzRXUm9JdnZXc1hvdzErMXNCSVFzUjNiR0ZUZUNRSnJaaFFheGcySTBnSlJQZVkK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDUzQzBBNkI2QzJGQ0JGOUYKUldTZnYvekN0cWJBVTJPZDFsejZQazZlYnZ0NWtOTmpHTmE5REQ3VENGVUZ6YW5vdFozRVRXZk0K",
       "endpoints": [
         "https://github.com/August-Trung/august-guide/releases/latest/download/latest.json"
       ]
