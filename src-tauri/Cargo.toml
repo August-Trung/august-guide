@@ -1,6 +1,6 @@
 [package]
 name = "august-guide"
-version = "0.1.3"
+version = "0.1.4"
 description = "August Guide — Step-by-step Visual Guides & SOP Creator"
 authors = []
 edition = "2021"
