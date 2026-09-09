@@ -243,8 +243,29 @@ pub fn get_capture(state: State<'_, AppState>, id: String) -> AppResult<Capture>
     Ok(capture)
 }
 
+/// Lấy danh sách tất cả các lượt chụp (Captures) trong một Session.
+#[tauri::command]
+pub fn get_captures_by_session(
+    state: State<'_, AppState>,
+    session_id: String,
+) -> AppResult<Vec<Capture>> {
+    let conn = state
+        .db
+        .lock()
+        .map_err(|e| AppError::Database(e.to_string()))?;
+    let mut captures = capture_repo::get_captures_by_session(&conn, &session_id)?;
+
+    for capture in &mut captures {
+        let abs_path = state.app_data_dir.join(&capture.screenshot_path);
+        capture.screenshot_path = abs_path.to_string_lossy().to_string();
+    }
+
+    Ok(captures)
+}
+
 /// In log từ frontend overlay lên terminal backend.
 #[tauri::command]
 pub fn log_from_js(msg: String) {
     println!("[Overlay JS] {}", msg);
 }
+

@@ -76,6 +76,16 @@
     <!-- Hotkey hint / Action area -->
     <div class="d-flex align-center gap-3">
       <v-btn
+        icon="mdi-folder-image"
+        variant="tonal"
+        size="small"
+        color="secondary"
+        class="rounded"
+        :title="t('header.openFolder', 'Mở thư mục lưu ảnh')"
+        @click="handleOpenFolder"
+      ></v-btn>
+
+      <v-btn
         color="primary"
         prepend-icon="mdi-camera"
         variant="elevated"
@@ -101,7 +111,7 @@ import { storeToRefs } from 'pinia'
 import { useProjectStore } from '@/stores/projectStore'
 import { useSessionStore } from '@/stores/sessionStore'
 import { useRouter } from 'vue-router'
-import { searchAll } from '@/services/tauriCommands'
+import { searchAll, openAppFolder } from '@/services/tauriCommands'
 import { useI18n } from '@/composables/useI18n'
 import { startCaptureWorkflow } from '@/composables/useTauriEvents'
 
@@ -122,6 +132,14 @@ const { sessions } = storeToRefs(sessionStore)
 
 async function handleManualCapture() {
   await startCaptureWorkflow(projectStore, sessionStore)
+}
+
+async function handleOpenFolder() {
+  try {
+    await openAppFolder('screenshots')
+  } catch (e) {
+    console.error('Failed to open screenshots folder:', e)
+  }
 }
 
 const router = useRouter()

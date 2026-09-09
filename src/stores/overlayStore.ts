@@ -173,7 +173,7 @@ export const useOverlayStore = defineStore('overlay', () => {
     const cropX = cropBox.value?.x ?? 0
     const cropY = cropBox.value?.y ?? 0
 
-    const payloads = annotations.value.map(ann => {
+    let payloads = annotations.value.map(ann => {
       let markerX = 0
       let markerY = 0
       if (ann.type === 'marker') {
@@ -224,6 +224,23 @@ export const useOverlayStore = defineStore('overlay', () => {
         tags: []
       }
     })
+
+    if (payloads.length === 0) {
+      payloads = [{
+        markerNumber: 1,
+        title: guideTitle.value || 'Ảnh chụp màn hình',
+        description: '',
+        issueType: 'GuideStep',
+        severity: 'Info',
+        status: 'Open',
+        markerX: 0,
+        markerY: 0,
+        annotationData: JSON.stringify({ type: 'full_screenshot' }),
+        color: '#FF6B35',
+        strokeWidth: 2,
+        tags: []
+      }]
+    }
 
     try {
       const uiStore = useUiStore()

@@ -259,6 +259,16 @@ const handleCopy = async () => {
   if (annotationCanvasRef.value) {
     const copied = await annotationCanvasRef.value.copyToClipboard()
     if (copied) {
+      try {
+        let annotatedBase64: string | undefined = undefined
+        const merged = annotationCanvasRef.value.getMergedCanvas()
+        if (merged) {
+          annotatedBase64 = merged.toDataURL('image/png')
+        }
+        await overlayStore.saveAndClose(annotatedBase64)
+      } catch (e) {
+        console.error('[OverlayApp] Auto-save on copy error:', e)
+      }
       setTimeout(() => {
         closeOverlay()
       }, 250)

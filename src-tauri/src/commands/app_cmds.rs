@@ -94,3 +94,40 @@ pub fn uninstall_app(app: tauri::AppHandle) -> AppResult<()> {
 
     Ok(())
 }
+
+/// Mở thư mục lưu trữ của ứng dụng (screenshots, crops, exports hoặc gốc) trong File Explorer.
+#[tauri::command]
+pub fn open_app_folder(state: State<'_, AppState>, folder_type: Option<String>) -> AppResult<()> {
+    let target_path = match folder_type.as_deref() {
+        Some("crops") => state.app_data_dir.join("crops"),
+        Some("exports") => state.app_data_dir.join("exports"),
+        Some("root") => state.app_data_dir.clone(),
+        _ => state.app_data_dir.join("screenshots"),
+    };
+
+    if !target_path.exists() {
+        let _ = std::fs::create_dir_all(&target_path);
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let _ = std::process::Command::new("explorer")
+            .arg(target_path.as_os_str())
+            .spawn();
+    }
+    #[cfg(target_os = "macos")]
+    {
+        let _ = std::process::Command::new("open")
+            .arg(target_path.as_os_str())
+            .spawn();
+    }
+    #[cfg(target_os = "linux")]
+    {
+        let _ = std::process::Command::new("xdg-open")
+            .arg(target_path.as_os_str())
+            .spawn();
+    }
+
+    Ok(())
+}
+

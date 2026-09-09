@@ -145,6 +145,20 @@ export async function getCapture(id: string): Promise<Capture> {
   return invoke<Capture>('get_capture', { id })
 }
 
+/**
+ * Lấy danh sách tất cả các Capture trong một Session.
+ */
+export async function getCapturesBySession(sessionId: string): Promise<Capture[]> {
+  return invoke<Capture[]>('get_captures_by_session', { sessionId })
+}
+
+/**
+ * Mở thư mục lưu ảnh của ứng dụng trong File Explorer.
+ */
+export async function openAppFolder(folderType?: string): Promise<void> {
+  return invoke<void>('open_app_folder', { folderType })
+}
+
 // ============================================================================
 // Issue Commands
 // ============================================================================

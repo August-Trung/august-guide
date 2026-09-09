@@ -311,8 +311,18 @@
                   <div class="font-weight-medium">{{ t('settingsView.databaseFile') }}</div>
                   <div class="text-caption text-medium-emphasis">Local storage directory for captures and DB</div>
                 </div>
-                <div class="text-caption font-weight-bold text-primary text-truncate max-width-path">
-                  {{ dbLocation }}
+                <div class="d-flex align-center gap-2">
+                  <div class="text-caption font-weight-bold text-primary text-truncate max-width-path">
+                    {{ dbLocation }}
+                  </div>
+                  <v-btn
+                    icon="mdi-folder-open"
+                    variant="tonal"
+                    size="small"
+                    color="primary"
+                    :title="t('sessionView.openFolder', 'Mở thư mục lưu trữ')"
+                    @click="openStorageFolder"
+                  ></v-btn>
                 </div>
               </div>
 
@@ -505,6 +515,7 @@ import { useSettingsStore } from '@/stores/settingsStore'
 import { useProjectStore } from '@/stores/projectStore'
 import { getVersion } from '@tauri-apps/api/app'
 import { invoke } from '@tauri-apps/api/core'
+import { openAppFolder } from '@/services/tauriCommands'
 import { useI18n } from '@/composables/useI18n'
 
 const settingsStore = useSettingsStore()
@@ -515,6 +526,14 @@ const activeTab = ref('general')
 const appVersion = ref('Loading...')
 const dbSize = ref(0)
 const dbLocation = ref('Loading...')
+
+const openStorageFolder = async () => {
+  try {
+    await openAppFolder('root')
+  } catch (e) {
+    console.error('Failed to open storage folder:', e)
+  }
+}
 
 // Statistics state (populated dynamically in T1.07)
 const stats = ref({

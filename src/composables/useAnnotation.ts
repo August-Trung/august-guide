@@ -87,9 +87,10 @@ export function useAnnotation(
         renderMarker(ctx, ann.topLeft.x, ann.topLeft.y - 20, ann.number, isPending, color)
       }
     } else if (ann.type === 'arrow') {
-      renderArrow(ctx, ann.start.x, ann.start.y, ann.end.x, ann.end.y, isPending, color, Math.max(3, strokeWidth + 1))
-      if (ann.showBadge && ann.number) {
-        renderMarker(ctx, ann.start.x, ann.start.y, ann.number, isPending, color)
+      const hasBadge = !!(ann.showBadge && ann.number)
+      renderArrow(ctx, ann.start.x, ann.start.y, ann.end.x, ann.end.y, isPending, color, Math.max(3, strokeWidth + 1), hasBadge)
+      if (hasBadge) {
+        renderMarker(ctx, ann.start.x, ann.start.y, ann.number || 0, isPending, color)
       }
     } else if (ann.type === 'text') {
       renderText(ctx, ann.position.x, ann.position.y, ann.text, '#FFFFFF', 'rgba(15, 17, 23, 0.85)')
@@ -283,8 +284,9 @@ export function useAnnotation(
         renderMarker(ctx, x, y - 20, overlayStore.nextMarkerNumber, true, color)
       }
     } else if (overlayStore.activeTool === 'arrow') {
-      renderArrow(ctx, startPoint.value.x, startPoint.value.y, coords.x, coords.y, true, color, Math.max(3, strokeWidth + 1))
-      if (overlayStore.defaultShowBadge) {
+      const hasBadge = overlayStore.defaultShowBadge
+      renderArrow(ctx, startPoint.value.x, startPoint.value.y, coords.x, coords.y, true, color, Math.max(3, strokeWidth + 1), hasBadge)
+      if (hasBadge) {
         renderMarker(ctx, startPoint.value.x, startPoint.value.y, overlayStore.nextMarkerNumber, true, color)
       }
     } else if (overlayStore.activeTool === 'blur') {

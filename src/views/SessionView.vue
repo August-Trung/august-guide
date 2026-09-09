@@ -50,6 +50,19 @@
               {{ t('sessionView.shareToCloud') }}
             </v-btn>
 
+            <!-- Open Screenshots Folder Button -->
+            <v-btn
+              color="surface-variant"
+              variant="tonal"
+              size="large"
+              prepend-icon="mdi-folder-image"
+              class="text-none"
+              :title="t('sessionView.openFolder', 'Mở thư mục lưu ảnh')"
+              @click="handleOpenFolder"
+            >
+              {{ t('sessionView.openFolder', 'Thư mục ảnh') }}
+            </v-btn>
+
             <!-- Export Button -->
             <v-btn
               color="secondary"
@@ -71,30 +84,92 @@
               :loading="isCapturing"
               @click="handleCapture"
             >
-              {{ t('sessionView.captureMarkup', 'Capture screen') }}
+              {{ t('sessionView.captureMarkup', 'Chụp màn hình') }}
             </v-btn>
           </div>
         </div>
 
         <v-divider class="mb-6"></v-divider>
 
-        <!-- Issues Section Header -->
-        <div class="d-flex align-center justify-space-between mb-4">
-          <h2 class="text-h5 font-weight-bold text-white">{{ t('sessionView.issuesInSession', 'Issues in this Session') }}</h2>
-          <span class="text-caption text-medium-emphasis">
-            {{ t('sessionView.showingIssues', 'Showing {filtered} of {total} issue(s)', { filtered: filteredIssues.length, total: issues.length }) }}
+        <!-- View Tabs: Steps vs Captures -->
+        <div class="d-flex align-center justify-space-between mb-4 flex-wrap gap-2">
+          <v-tabs v-model="activeTab" color="primary" density="comfortable">
+            <v-tab value="issues" class="text-none font-weight-bold">
+              <v-icon start icon="mdi-format-list-numbered"></v-icon>
+              {{ t('sessionView.issuesInSession', 'Các bước hướng dẫn') }} ({{ issues.length }})
+            </v-tab>
+            <v-tab value="captures" class="text-none font-weight-bold">
+              <v-icon start icon="mdi-image-multiple"></v-icon>
+              {{ t('sessionView.capturesInSession', 'Tất cả ảnh chụp') }} ({{ captures.length }})
+            </v-tab>
+          </v-tabs>
+
+          <span v-if="activeTab === 'issues'" class="text-caption text-medium-emphasis">
+            {{ t('sessionView.showingIssues', 'Hiển thị {filtered} trên {total} bước', { filtered: filteredIssues.length, total: issues.length }) }}
+          </span>
+          <span v-else class="text-caption text-medium-emphasis">
+            {{ captures.length }} ảnh chụp trong phiên
           </span>
         </div>
 
-        <!-- Filter Bar -->
-        <FilterBar class="mb-4" />
+        <!-- Issues / Steps Tab -->
+        <div v-if="activeTab === 'issues'">
+          <!-- Filter Bar -->
+          <FilterBar class="mb-4" />
 
-        <!-- Issue List -->
-        <div v-if="isLoadingIssues" class="d-flex align-center justify-center py-8">
-          <v-progress-circular indeterminate color="secondary" size="36"></v-progress-circular>
+          <!-- Issue List -->
+          <div v-if="isLoadingIssues" class="d-flex align-center justify-center py-8">
+            <v-progress-circular indeterminate color="secondary" size="36"></v-progress-circular>
+          </div>
+          <div v-else>
+            <IssueList :issues="filteredIssues" @delete="handleDeleteIssue" />
+          </div>
         </div>
+
+        <!-- Captures Grid Tab -->
         <div v-else>
-          <IssueList :issues="filteredIssues" @delete="handleDeleteIssue" />
+          <div v-if="isLoadingCaptures" class="d-flex align-center justify-center py-8">
+            <v-progress-circular indeterminate color="primary" size="36"></v-progress-circular>
+          </div>
+          <div v-else-if="captures.length === 0" class="text-center py-12 text-medium-emphasis">
+            <v-icon icon="mdi-image-off-outline" size="48" class="mb-2"></v-icon>
+            <div>Chưa có ảnh chụp nào trong bài hướng dẫn này</div>
+          </div>
+          <v-row v-else>
+            <v-col
+              v-for="cap in captures"
+              :key="cap.id"
+              cols="12"
+              sm="6"
+              md="4"
+              lg="3"
+            >
+              <v-card border class="overflow-hidden h-100 d-flex flex-column capture-card">
+                <div class="position-relative capture-thumb-wrapper" style="height: 180px; background: #0f172a; cursor: pointer;" @click="openImagePreview(cap)">
+                  <v-img
+                    :src="convertFileSrc(cap.screenshotPath)"
+                    cover
+                    height="180"
+                    class="bg-grey-darken-4"
+                  >
+                    <template v-slot:placeholder>
+                      <div class="d-flex align-center justify-center fill-height">
+                        <v-progress-circular indeterminate size="24" color="primary"></v-progress-circular>
+                      </div>
+                    </template>
+                  </v-img>
+                </div>
+                <v-card-item class="pa-3 flex-grow-1">
+                  <div class="text-subtitle-2 font-weight-bold text-truncate text-white mb-1">
+                    {{ cap.windowTitle || 'Ảnh chụp toàn màn hình' }}
+                  </div>
+                  <div class="text-caption text-medium-emphasis">
+                    {{ formatDate(cap.createdAt) }} • {{ cap.monitorWidth }}×{{ cap.monitorHeight }}
+                  </div>
+                </v-card-item>
+              </v-card>
+            </v-col>
+          </v-row>
         </div>
       </div>
     </v-container>
@@ -164,6 +239,33 @@
         <v-btn variant="text" @click="showError = false">{{ t('sessionView.closeBtn') }}</v-btn>
       </template>
     </v-snackbar>
+
+    <!-- Fullscreen Image Preview Dialog -->
+    <v-dialog v-model="showPreviewDialog" max-width="1100">
+      <v-card border color="surface">
+        <v-card-title class="d-flex align-center justify-space-between py-3 px-6 border-b">
+          <span class="text-subtitle-1 font-weight-bold text-white">{{ previewImageTitle }}</span>
+          <div class="d-flex align-center gap-2">
+            <v-btn
+              icon="mdi-folder-open-outline"
+              variant="text"
+              density="comfortable"
+              :title="t('sessionView.openFolder', 'Mở thư mục lưu ảnh')"
+              @click="handleOpenFolder"
+            ></v-btn>
+            <v-btn icon="mdi-close" variant="text" density="comfortable" @click="showPreviewDialog = false"></v-btn>
+          </div>
+        </v-card-title>
+        <v-card-text class="pa-4 text-center bg-black d-flex align-center justify-center" style="max-height: 80vh; overflow: auto;">
+          <img
+            v-if="previewImageUrl"
+            :src="previewImageUrl"
+            alt="Preview"
+            style="max-width: 100%; max-height: 75vh; object-fit: contain; border-radius: 4px;"
+          />
+        </v-card-text>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -171,7 +273,8 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
-import { getSession, triggerCapture, openOverlay, shareSessionOnGdrive } from '@/services/tauriCommands'
+import { convertFileSrc } from '@tauri-apps/api/core'
+import { getSession, triggerCapture, openOverlay, shareSessionOnGdrive, getCapturesBySession, openAppFolder } from '@/services/tauriCommands'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useIssueStore } from '@/stores/issueStore'
 import { listenToEvent } from '@/services/tauriEvents'
@@ -181,7 +284,9 @@ import IssueList from '@/components/dashboard/IssueList.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import ExportDialog from '@/components/export/ExportDialog.vue'
 import type { Session } from '@/types/session'
+import type { Capture } from '@/types/capture'
 import { useI18n } from '@/composables/useI18n'
+import { formatDate } from '@/utils/date'
 
 const { t } = useI18n()
 
@@ -190,9 +295,16 @@ const router = useRouter()
 const sessionId = route.params.id as string
 
 const session = ref<Session | null>(null)
+const captures = ref<Capture[]>([])
 const isLoadingSession = ref(true)
+const isLoadingCaptures = ref(false)
 const isCapturing = ref(false)
 const isSharing = ref(false)
+const activeTab = ref<'issues' | 'captures'>('issues')
+
+const showPreviewDialog = ref(false)
+const previewImageUrl = ref<string | null>(null)
+const previewImageTitle = ref<string>('')
 
 const settingsStore = useSettingsStore()
 const issueStore = useIssueStore()
@@ -221,6 +333,31 @@ const loadIssues = async () => {
   }
 }
 
+const loadCaptures = async () => {
+  isLoadingCaptures.value = true
+  try {
+    captures.value = await getCapturesBySession(sessionId)
+  } catch (err) {
+    console.error('Failed to load captures for session:', err)
+  } finally {
+    isLoadingCaptures.value = false
+  }
+}
+
+const handleOpenFolder = async () => {
+  try {
+    await openAppFolder('screenshots')
+  } catch (e) {
+    console.error('Failed to open screenshots folder:', e)
+  }
+}
+
+const openImagePreview = (cap: Capture) => {
+  previewImageUrl.value = convertFileSrc(cap.screenshotPath)
+  previewImageTitle.value = cap.windowTitle || `Ảnh chụp ${formatDate(cap.createdAt)}`
+  showPreviewDialog.value = true
+}
+
 let unlistenSessionUpdated: (() => void) | null = null
 
 onMounted(async () => {
@@ -229,12 +366,14 @@ onMounted(async () => {
   if (sessionId) {
     await loadSessionDetails()
     await loadIssues()
+    await loadCaptures()
   }
 
   unlistenSessionUpdated = await listenToEvent<string>('session-updated', async (updatedSessionId) => {
     if (updatedSessionId === sessionId) {
       await loadSessionDetails()
       await loadIssues()
+      await loadCaptures()
     }
   })
 })
@@ -271,6 +410,7 @@ const executeDeleteIssue = async () => {
   if (!issueToDelete.value) return
   try {
     await issueStore.deleteIssue(issueToDelete.value)
+    await loadCaptures()
   } catch (err) {
     console.error('Failed to delete issue:', err)
   } finally {

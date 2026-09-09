@@ -146,43 +146,68 @@ export function useCanvas() {
     endY: number,
     isPending: boolean,
     color = '#FF6B35',
-    strokeWidth = 3
+    strokeWidth = 3,
+    hasBadge = false
   ) => {
+    const dx = endX - startX
+    const dy = endY - startY
+    const distance = Math.hypot(dx, dy)
+    if (distance < 3) return
+
     ctx.save()
+    const angle = Math.atan2(dy, dx)
+    const headLength = Math.min(18, Math.max(14, strokeWidth * 3.5))
+
+    // Start offset if arrow originates from a circular marker badge (radius ~15)
+    let actualStartX = startX
+    let actualStartY = startY
+    if (hasBadge && distance > 20) {
+      actualStartX = startX + 14 * Math.cos(angle)
+      actualStartY = startY + 14 * Math.sin(angle)
+    }
+
+    // End point of the shaft line stops at the base of the arrowhead (not poking through the tip)
+    const shaftEndX = distance > headLength ? endX - (headLength * 0.7) * Math.cos(angle) : actualStartX
+    const shaftEndY = distance > headLength ? endY - (headLength * 0.7) * Math.sin(angle) : actualStartY
+
+    // Draw line shaft
     ctx.strokeStyle = color
     ctx.lineWidth = strokeWidth
-    
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+
     if (isPending) {
       ctx.setLineDash([6, 3])
     } else {
       ctx.setLineDash([])
     }
-    
-    // Draw line
+
     ctx.beginPath()
-    ctx.moveTo(startX, startY)
-    ctx.lineTo(endX, endY)
+    ctx.moveTo(actualStartX, actualStartY)
+    ctx.lineTo(shaftEndX, shaftEndY)
     ctx.stroke()
-    
-    // Calculate angle for arrowhead
-    const angle = Math.atan2(endY - startY, endX - startX)
-    const headLength = 15
-    
-    // Draw arrowhead
+
+    // Draw arrowhead triangle
+    const wing1X = endX - headLength * Math.cos(angle - Math.PI / 6)
+    const wing1Y = endY - headLength * Math.sin(angle - Math.PI / 6)
+    const wing2X = endX - headLength * Math.cos(angle + Math.PI / 6)
+    const wing2Y = endY - headLength * Math.sin(angle + Math.PI / 6)
+
     ctx.setLineDash([])
     ctx.fillStyle = color
+    ctx.strokeStyle = color
+    ctx.lineWidth = 1
+    ctx.lineJoin = 'round'
+    ctx.lineCap = 'round'
+
     ctx.beginPath()
     ctx.moveTo(endX, endY)
-    ctx.lineTo(
-      endX - headLength * Math.cos(angle - Math.PI / 6),
-      endY - headLength * Math.sin(angle - Math.PI / 6)
-    )
-    ctx.lineTo(
-      endX - headLength * Math.cos(angle + Math.PI / 6),
-      endY - headLength * Math.sin(angle + Math.PI / 6)
-    )
+    ctx.lineTo(wing1X, wing1Y)
+    ctx.lineTo(wing2X, wing2Y)
     ctx.closePath()
     ctx.fill()
+    ctx.stroke()
+
     ctx.restore()
   }
 
