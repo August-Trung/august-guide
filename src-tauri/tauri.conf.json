@@ -56,7 +56,7 @@
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDcxQzE2QzMzODBFQUNGNUMKUldSY3orcUFNMnpCY2ZCVzZ1WU5VMnI3WVV6Uyt1VGk2QzVwK0F3S2x6TERyY0dhL3A2VnZsY08K",
       "endpoints": [
-        "https://raw.githubusercontent.com/August-Studio/august-guide/main/updater/latest.json"
+        "https://github.com/August-Trung/august-guide/releases/latest/download/latest.json"
       ]
     }
   }
