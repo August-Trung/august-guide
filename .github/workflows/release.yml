@@ -1,4 +1,4 @@
-﻿name: Release App
+name: Release App
 
 on:
   push:
@@ -46,4 +46,5 @@ jobs:
           releaseBody: 'Phiên bản mới của August Guide. Đã hỗ trợ tự động cập nhật trực tiếp trong ứng dụng.'
           releaseDraft: false
           prerelease: false
+          includeUpdaterJson: true
           args: ${{ matrix.args }}
