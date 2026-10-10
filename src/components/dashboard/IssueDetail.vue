@@ -99,7 +99,7 @@
         </v-card>
 
         <!-- Crop Preview -->
-        <v-card bg-color="surface" variant="outlined" color="surface-variant" class="pa-4">
+        <v-card v-if="cropUrl" bg-color="surface" variant="outlined" color="surface-variant" class="pa-4">
           <div class="text-subtitle-1 font-weight-bold text-white mb-3">
             {{ t('issueDetail.issueCrop', 'Issue Crop (Zoomed View)') }}
           </div>

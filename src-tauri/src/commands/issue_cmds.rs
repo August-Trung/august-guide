@@ -3,7 +3,6 @@ use crate::error::{AppError, AppResult};
 use crate::models::{CreateIssuePayload, Issue, UpdateIssuePayload};
 use crate::services::{file_storage, image_processor};
 use crate::state::AppState;
-use chrono::Utc;
 use tauri::{AppHandle, Emitter, Manager, State};
 
 /// Save annotations to the database, generate crops, save annotated screenshot, and close the overlay.
@@ -24,13 +23,6 @@ pub async fn save_capture_annotations(
 
     let capture = capture_repo::get_capture_by_id(&conn, &capture_id)?;
     let session = crate::db::session_repo::get_session(&conn, &capture.session_id)?;
-
-    // Extract date_str from capture creation date or fallback to current date
-    let date_str = if capture.created_at.len() >= 10 {
-        capture.created_at[..10].to_string()
-    } else {
-        Utc::now().format("%Y-%m-%d").to_string()
-    };
 
     // 2. Load original screenshot from disk
     let screenshot_abs_path = state.app_data_dir.join(&capture.screenshot_path);
@@ -77,20 +69,14 @@ pub async fn save_capture_annotations(
     annotated_image.save(&abs_annotated_path)
         .map_err(|e| AppError::FileIO(format!("Failed to save annotated screenshot: {}", e)))?;
 
-    // 5. Generate crop images for each issue (crop from the annotated image!)
+    // 5. Do not generate crop images (keep only raw screenshot + vector JSON)
     let mut crop_paths = Vec::new();
     let mut id_overrides = Vec::new();
 
-    for payload in &issues {
+    for _ in &issues {
         let issue_id = crate::utils::id::new_uuid();
-        id_overrides.push(issue_id.clone());
-
-        // Perform centered 400x400 crop around coordinates
-        let cropped = image_processor::crop_for_issue(&annotated_image, payload.marker_x, payload.marker_y);
-
-        // Save crop
-        let rel_crop_path = file_storage::save_crop(cropped, &state.app_data_dir, &issue_id, &date_str)?;
-        crop_paths.push(Some(rel_crop_path));
+        id_overrides.push(issue_id);
+        crop_paths.push(None);
     }
 
     // 6. Commit issues batch to SQLite DB in a transaction
