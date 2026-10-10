@@ -397,5 +397,13 @@ export async function autoSaveScreenshotCopy(base64Data: string, title?: string)
   return invoke<string | null>('auto_save_screenshot_copy', { base64Data, title })
 }
 
+export async function saveRecordingFile(filePath: string, base64Data: string): Promise<string> {
+  return invoke<string>('save_recording_file', { filePath, base64Data })
+}
+
+export async function openInExplorer(filePath: string): Promise<void> {
+  return invoke<void>('open_in_explorer', { filePath })
+}
+
 
 

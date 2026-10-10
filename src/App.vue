@@ -42,6 +42,10 @@
 
     <!-- Global Update Modal -->
     <UpdateModal />
+
+    <!-- Global Screen Recording Widget & Preview Dialog -->
+    <RecordingWidget />
+    <RecordPreviewDialog />
   </v-app>
 </template>
 
@@ -49,6 +53,8 @@
 import { computed, onMounted, watch } from 'vue'
 import AppSidebar from '@/components/common/AppSidebar.vue'
 import UpdateModal from '@/components/common/UpdateModal.vue'
+import RecordingWidget from '@/components/record/RecordingWidget.vue'
+import RecordPreviewDialog from '@/components/record/RecordPreviewDialog.vue'
 import { useTauriEvents } from '@/composables/useTauriEvents'
 import { useAppUpdater } from '@/composables/useAppUpdater'
 import { useUiStore } from '@/stores/uiStore'

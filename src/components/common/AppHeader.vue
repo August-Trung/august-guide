@@ -96,6 +96,18 @@
         {{ t('header.captureNow', 'Chụp màn hình') }}
       </v-btn>
 
+      <v-btn
+        color="error"
+        prepend-icon="mdi-record-rec"
+        variant="tonal"
+        size="small"
+        class="text-none font-weight-bold"
+        title="Quay video toàn màn hình (F9)"
+        @click="handleToggleRecord"
+      >
+        {{ isRecording ? 'Dừng quay (F9)' : 'Quay video (F9)' }}
+      </v-btn>
+
       <div class="d-flex align-center text-caption text-medium-emphasis bg-surface px-3 py-1 rounded border">
         <v-icon size="14" class="mr-1" color="primary">mdi-keyboard</v-icon>
         <span class="mr-1">{{ t('header.triggerCapture') }}</span>
@@ -114,6 +126,7 @@ import { useRouter } from 'vue-router'
 import { searchAll, openAppFolder } from '@/services/tauriCommands'
 import { useI18n } from '@/composables/useI18n'
 import { startCaptureWorkflow } from '@/composables/useTauriEvents'
+import { useScreenRecorder } from '@/composables/useScreenRecorder'
 
 interface SearchItem {
   id: string
@@ -230,6 +243,16 @@ watch(selectedItem, (item) => {
 const activeSessionsCount = computed(() => {
   return sessions.value.filter(s => s.status === 'active').length
 })
+
+const { isRecording, startRecording, stopRecording } = useScreenRecorder()
+
+const handleToggleRecord = () => {
+  if (isRecording.value) {
+    stopRecording()
+  } else {
+    startRecording()
+  }
+}
 </script>
 
 <style scoped>

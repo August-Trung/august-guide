@@ -9,6 +9,7 @@ pub mod tag_cmds;
 pub mod search_cmds;
 pub mod gdrive_cmds;
 pub mod aacp_cmds;
+pub mod record_cmds;
 
 
 

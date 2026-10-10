@@ -58,6 +58,12 @@ pub fn run() {
                             }
 
                             let _ = app.emit("capture:trigger", ());
+                        } else if shortcut.matches(Modifiers::empty(), Code::F9) {
+                            let _ = app.emit("record:toggle", ());
+                        } else if shortcut.matches(Modifiers::empty(), Code::F10) {
+                            let _ = app.emit("record:pause_resume", ());
+                        } else if shortcut.matches(Modifiers::empty(), Code::F8) {
+                            let _ = app.emit("record:toggle_mic", ());
                         }
                     }
                 })
@@ -120,6 +126,8 @@ pub fn run() {
             commands::aacp_cmds::get_download_dir,
             commands::capture_cmds::save_image_to_file,
             commands::capture_cmds::auto_save_screenshot_copy,
+            commands::record_cmds::save_recording_file,
+            commands::record_cmds::open_in_explorer,
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
@@ -201,15 +209,18 @@ pub fn run() {
             let state = state::AppState::new(conn, app_data_dir);
             app.manage(state);
 
-            // Register global shortcut Ctrl+Shift+M
+            // Register global shortcuts: Ctrl+Shift+M (Capture), F9 (Record), F10 (Pause/Resume), F8 (Toggle Mic)
             #[cfg(desktop)]
             {
                 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut};
-                let shortcut =
+                let capture_shortcut =
                     Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyM);
-                if let Err(e) = app.global_shortcut().register(shortcut) {
-                    log::warn!("[Shortcut] Global shortcut registration warning: {:?}", e);
+                if let Err(e) = app.global_shortcut().register(capture_shortcut) {
+                    log::warn!("[Shortcut] Global capture shortcut registration warning: {:?}", e);
                 }
+                let _ = app.global_shortcut().register(Shortcut::new(None, Code::F9));
+                let _ = app.global_shortcut().register(Shortcut::new(None, Code::F10));
+                let _ = app.global_shortcut().register(Shortcut::new(None, Code::F8));
                 
                 // Start global mouse listener background thread (T5.04)
                 services::mouse_hook::start_mouse_hook(app.handle().clone());
@@ -226,12 +237,14 @@ pub fn run() {
 
                 // System Tray Setup
                 let quit_i = MenuItemBuilder::with_id("quit", "Thoát").build(app)?;
-                let capture_i = MenuItemBuilder::with_id("capture", "Chụp màn hình").build(app)?;
+                let capture_i = MenuItemBuilder::with_id("capture", "Chụp màn hình (Ctrl+Shift+M)").build(app)?;
+                let record_i = MenuItemBuilder::with_id("record", "Quay video màn hình (F9)").build(app)?;
                 let open_i = MenuItemBuilder::with_id("open", "Mở August Guide").build(app)?;
                 let settings_i = MenuItemBuilder::with_id("settings", "Cài đặt").build(app)?;
 
                 let menu = MenuBuilder::new(app)
                     .item(&capture_i)
+                    .item(&record_i)
                     .item(&open_i)
                     .item(&settings_i)
                     .separator()
@@ -249,6 +262,9 @@ pub fn run() {
                             }
                             "capture" => {
                                 let _ = app.emit("capture:trigger", ());
+                            }
+                            "record" => {
+                                let _ = app.emit("record:toggle", ());
                             }
                             "open" => {
                                 if let Some(window) = app.get_webview_window("main") {

@@ -266,6 +266,47 @@
                   ></v-btn>
                 </div>
               </div>
+
+              <v-divider class="my-6"></v-divider>
+
+              <!-- Screen Recording Hotkeys & Settings -->
+              <div>
+                <div class="text-subtitle-1 font-weight-bold mb-1">Quay video màn hình</div>
+                <div class="text-body-2 text-medium-emphasis mb-3">
+                  Quay lại toàn bộ thao tác màn hình kèm âm thanh thuyết minh từ Microphone.
+                </div>
+
+                <v-table density="compact" class="bg-surface-variant rounded border">
+                  <thead>
+                    <tr>
+                      <th class="text-left font-weight-bold text-white">Thao tác</th>
+                      <th class="text-left font-weight-bold text-white">Phím tắt</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>Bắt đầu / Dừng quay & Lưu</td>
+                      <td><kbd class="kbd-key font-weight-bold text-primary">F9</kbd></td>
+                    </tr>
+                    <tr>
+                      <td>Tạm dừng / Tiếp tục quay</td>
+                      <td><kbd class="kbd-key font-weight-bold">F10</kbd></td>
+                    </tr>
+                    <tr>
+                      <td>Bật / Tắt Microphone</td>
+                      <td><kbd class="kbd-key font-weight-bold">F8</kbd></td>
+                    </tr>
+                    <tr>
+                      <td>Hủy bỏ bản quay dở</td>
+                      <td><kbd class="kbd-key font-weight-bold">Esc</kbd></td>
+                    </tr>
+                    <tr>
+                      <td>Lưu file video (tại bảng xem lại)</td>
+                      <td><kbd class="kbd-key font-weight-bold">Ctrl + S</kbd></td>
+                    </tr>
+                  </tbody>
+                </v-table>
+              </div>
             </v-card>
           </v-window-item>
 
