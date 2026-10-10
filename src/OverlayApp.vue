@@ -190,7 +190,7 @@ const handleKeyDown = async (e: KeyboardEvent) => {
     return
   }
 
-  // Ctrl+Z (Undo) and Ctrl+Y (Redo), Ctrl+D (Duplicate), Ctrl+C (Copy), Ctrl+S (Save)
+  // Ctrl+Z (Undo), Ctrl+Y (Redo), Ctrl+D (Duplicate), Ctrl+C (Copy), Ctrl+V (Paste), Ctrl+S (Save)
   if (e.ctrlKey) {
     if (e.key.toLowerCase() === 'z') {
       e.preventDefault()
@@ -204,9 +204,28 @@ const handleKeyDown = async (e: KeyboardEvent) => {
         overlayStore.duplicateAnnotation(overlayStore.selectedAnnotationId)
         annotationCanvasRef.value?.drawSelectionPreview?.()
       }
-    } else if (e.key.toLowerCase() === 'c') {
+    } else if (e.shiftKey && e.key.toLowerCase() === 'c') {
+      // Ctrl + Shift + C: Luôn copy toàn bộ ảnh vào clipboard hệ thống
       e.preventDefault()
       await handleCopy()
+    } else if (e.key.toLowerCase() === 'c') {
+      e.preventDefault()
+      if (overlayStore.selectedAnnotationId) {
+        const ok = overlayStore.copySelectedAnnotation()
+        if (ok) {
+          uiStore.showToast({ message: 'Đã sao chép nét vẽ!', type: 'success' })
+        }
+      } else {
+        // Không chọn hình nào -> copy toàn bộ ảnh vào clipboard hệ thống
+        await handleCopy()
+      }
+    } else if (e.key.toLowerCase() === 'v') {
+      if (overlayStore.copiedAnnotation) {
+        e.preventDefault()
+        overlayStore.pasteAnnotation()
+        annotationCanvasRef.value?.drawSelectionPreview?.()
+        uiStore.showToast({ message: 'Đã dán nét vẽ!', type: 'success' })
+      }
     } else if (e.key.toLowerCase() === 's') {
       e.preventDefault()
       await handleDone()

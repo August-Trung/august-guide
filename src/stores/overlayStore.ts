@@ -36,6 +36,8 @@ export const useOverlayStore = defineStore('overlay', () => {
   const defaultShowBadge = ref<boolean>(true)
   const cropBox = ref<CropBox | null>(null)
 
+  const copiedAnnotation = ref<Annotation | null>(null)
+
   // Current active step note inputs
   const guideTitle = ref<string>('')
   const currentColor = ref<string>('#FF6B35')
@@ -74,6 +76,7 @@ export const useOverlayStore = defineStore('overlay', () => {
     guideTitle.value = ''
     currentColor.value = '#FF6B35'
     currentStrokeWidth.value = 2
+    copiedAnnotation.value = null
   }
 
   function setTool(tool: 'select' | 'marker' | 'rect' | 'arrow' | 'text' | 'blur' | 'freedraw' | 'highlight' | 'spotlight' | 'crop' | null) {
@@ -109,9 +112,7 @@ export const useOverlayStore = defineStore('overlay', () => {
     const ann = annotations.value.find(a => a.id === id)
     if (!ann) return null
 
-    const newId = typeof crypto?.randomUUID === 'function' 
-      ? crypto.randomUUID() 
-      : Math.random().toString(36).substring(2, 11)
+    const newId = crypto?.randomUUID?.() ?? Math.random().toString(36).substring(2, 11)
 
     const cloned: Annotation = JSON.parse(JSON.stringify(ann))
     cloned.id = newId
@@ -132,6 +133,39 @@ export const useOverlayStore = defineStore('overlay', () => {
 
     addAnnotation(cloned)
     selectedAnnotationId.value = cloned.id
+    return cloned
+  }
+
+  function copySelectedAnnotation(): boolean {
+    if (!selectedAnnotationId.value) return false
+    const ann = annotations.value.find(a => a.id === selectedAnnotationId.value)
+    if (!ann) return false
+    copiedAnnotation.value = JSON.parse(JSON.stringify(ann))
+    return true
+  }
+
+  function pasteAnnotation(): Annotation | null {
+    if (!copiedAnnotation.value) return null
+    const cloned: Annotation = JSON.parse(JSON.stringify(copiedAnnotation.value))
+    cloned.id = crypto?.randomUUID?.() ?? Math.random().toString(36).substring(2, 11)
+
+    const offset = 20
+    if (cloned.type === 'marker') {
+      cloned.position = { x: cloned.position.x + offset, y: cloned.position.y + offset }
+    } else if (cloned.type === 'rect' || cloned.type === 'blur' || cloned.type === 'highlight' || cloned.type === 'spotlight') {
+      cloned.topLeft = { x: cloned.topLeft.x + offset, y: cloned.topLeft.y + offset }
+    } else if (cloned.type === 'arrow') {
+      cloned.start = { x: cloned.start.x + offset, y: cloned.start.y + offset }
+      cloned.end = { x: cloned.end.x + offset, y: cloned.end.y + offset }
+    } else if (cloned.type === 'text') {
+      cloned.position = { x: cloned.position.x + offset, y: cloned.position.y + offset }
+    } else if (cloned.type === 'freedraw') {
+      cloned.points = cloned.points.map(p => ({ x: p.x + offset, y: p.y + offset }))
+    }
+
+    addAnnotation(cloned)
+    selectedAnnotationId.value = cloned.id
+    copiedAnnotation.value = JSON.parse(JSON.stringify(cloned))
     return cloned
   }
 
@@ -212,6 +246,7 @@ export const useOverlayStore = defineStore('overlay', () => {
     showStepNotes.value = false
     cropBox.value = null
     guideTitle.value = ''
+    copiedAnnotation.value = null
   }
 
   function undo() {
@@ -394,6 +429,9 @@ export const useOverlayStore = defineStore('overlay', () => {
     selectAnnotation,
     updateAnnotation,
     duplicateAnnotation,
+    copiedAnnotation,
+    copySelectedAnnotation,
+    pasteAnnotation,
     setColor,
     setStrokeWidth,
     setCropBox,
