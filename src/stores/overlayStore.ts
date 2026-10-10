@@ -20,8 +20,9 @@ export interface CropBox {
 }
 
 export const useOverlayStore = defineStore('overlay', () => {
-  const activeTool = ref<'marker' | 'rect' | 'arrow' | 'text' | 'blur' | 'freedraw' | 'highlight' | 'spotlight' | 'crop' | null>('marker')
+  const activeTool = ref<'select' | 'marker' | 'rect' | 'arrow' | 'text' | 'blur' | 'freedraw' | 'highlight' | 'spotlight' | 'crop' | null>('marker')
   const annotations = ref<Annotation[]>([])
+  const selectedAnnotationId = ref<string | null>(null)
   const undoStack = ref<HistoryAction[]>([])
   const redoStack = ref<HistoryAction[]>([])
   const captureId = ref<string | null>(null)
@@ -61,6 +62,7 @@ export const useOverlayStore = defineStore('overlay', () => {
     screenshotPath.value = path
     monitorInfo.value = info || null
     annotations.value = []
+    selectedAnnotationId.value = null
     undoStack.value = []
     redoStack.value = []
     nextMarkerNumber.value = 1
@@ -74,16 +76,87 @@ export const useOverlayStore = defineStore('overlay', () => {
     currentStrokeWidth.value = 2
   }
 
-  function setTool(tool: 'marker' | 'rect' | 'arrow' | 'text' | 'blur' | 'freedraw' | 'highlight' | 'spotlight' | 'crop' | null) {
+  function setTool(tool: 'select' | 'marker' | 'rect' | 'arrow' | 'text' | 'blur' | 'freedraw' | 'highlight' | 'spotlight' | 'crop' | null) {
     activeTool.value = tool
+    if (tool !== 'select') {
+      selectedAnnotationId.value = null
+    }
+  }
+
+  function selectAnnotation(id: string | null) {
+    selectedAnnotationId.value = id
+  }
+
+  function updateAnnotation(updated: Annotation, trackHistory = true, previousState?: Annotation) {
+    const idx = annotations.value.findIndex(a => a.id === updated.id)
+    if (idx !== -1) {
+      const prev = previousState || JSON.parse(JSON.stringify(annotations.value[idx]))
+      annotations.value[idx] = updated
+
+      if (trackHistory) {
+        undoStack.value.push({
+          type: 'update',
+          annotation: JSON.parse(JSON.stringify(updated)),
+          previousState: prev,
+          index: idx
+        })
+        redoStack.value = []
+      }
+    }
+  }
+
+  function duplicateAnnotation(id: string) {
+    const ann = annotations.value.find(a => a.id === id)
+    if (!ann) return null
+
+    const newId = typeof crypto?.randomUUID === 'function' 
+      ? crypto.randomUUID() 
+      : Math.random().toString(36).substring(2, 11)
+
+    const cloned: Annotation = JSON.parse(JSON.stringify(ann))
+    cloned.id = newId
+
+    const offset = 20
+    if (cloned.type === 'marker') {
+      cloned.position = { x: cloned.position.x + offset, y: cloned.position.y + offset }
+    } else if (cloned.type === 'rect' || cloned.type === 'blur' || cloned.type === 'highlight' || cloned.type === 'spotlight') {
+      cloned.topLeft = { x: cloned.topLeft.x + offset, y: cloned.topLeft.y + offset }
+    } else if (cloned.type === 'arrow') {
+      cloned.start = { x: cloned.start.x + offset, y: cloned.start.y + offset }
+      cloned.end = { x: cloned.end.x + offset, y: cloned.end.y + offset }
+    } else if (cloned.type === 'text') {
+      cloned.position = { x: cloned.position.x + offset, y: cloned.position.y + offset }
+    } else if (cloned.type === 'freedraw') {
+      cloned.points = cloned.points.map(p => ({ x: p.x + offset, y: p.y + offset }))
+    }
+
+    addAnnotation(cloned)
+    selectedAnnotationId.value = cloned.id
+    return cloned
   }
 
   function setColor(color: string) {
     currentColor.value = color
+    if (selectedAnnotationId.value) {
+      const ann = annotations.value.find(a => a.id === selectedAnnotationId.value)
+      if (ann) {
+        const prev = JSON.parse(JSON.stringify(ann))
+        ann.color = color
+        updateAnnotation(ann, true, prev)
+      }
+    }
   }
 
   function setStrokeWidth(width: number) {
     currentStrokeWidth.value = width
+    if (selectedAnnotationId.value) {
+      const ann = annotations.value.find(a => a.id === selectedAnnotationId.value)
+      if (ann) {
+        const prev = JSON.parse(JSON.stringify(ann))
+        ann.strokeWidth = width
+        updateAnnotation(ann, true, prev)
+      }
+    }
   }
 
   function setCropBox(box: CropBox | null) {
@@ -91,7 +164,6 @@ export const useOverlayStore = defineStore('overlay', () => {
   }
 
   function addAnnotation(annotation: Annotation) {
-    // By default all shapes and marks have badges enabled except blur
     if (annotation.showBadge === undefined) {
       annotation.showBadge = annotation.type === 'blur' ? false : defaultShowBadge.value
     }
@@ -116,6 +188,9 @@ export const useOverlayStore = defineStore('overlay', () => {
     if (idx !== -1) {
       const annotation = annotations.value[idx]
       annotations.value.splice(idx, 1)
+      if (selectedAnnotationId.value === id) {
+        selectedAnnotationId.value = null
+      }
       reindexAnnotations()
 
       undoStack.value.push({ type: 'delete', annotation, index: idx })
@@ -128,6 +203,7 @@ export const useOverlayStore = defineStore('overlay', () => {
     screenshotPath.value = ''
     monitorInfo.value = null
     annotations.value = []
+    selectedAnnotationId.value = null
     undoStack.value = []
     redoStack.value = []
     nextMarkerNumber.value = 1
@@ -145,9 +221,21 @@ export const useOverlayStore = defineStore('overlay', () => {
 
     if (action.type === 'add') {
       annotations.value = annotations.value.filter(a => a.id !== action.annotation.id)
+      if (selectedAnnotationId.value === action.annotation.id) {
+        selectedAnnotationId.value = null
+      }
     } else if (action.type === 'delete') {
       const insertIdx = action.index !== undefined ? action.index : annotations.value.length
       annotations.value.splice(insertIdx, 0, action.annotation)
+      selectedAnnotationId.value = action.annotation.id
+    } else if (action.type === 'update') {
+      if (action.previousState) {
+        const idx = annotations.value.findIndex(a => a.id === action.annotation.id)
+        if (idx !== -1) {
+          annotations.value[idx] = JSON.parse(JSON.stringify(action.previousState))
+          selectedAnnotationId.value = action.annotation.id
+        }
+      }
     }
     reindexAnnotations()
     redoStack.value.push(action)
@@ -160,8 +248,18 @@ export const useOverlayStore = defineStore('overlay', () => {
 
     if (action.type === 'add') {
       annotations.value.push(action.annotation)
+      selectedAnnotationId.value = action.annotation.id
     } else if (action.type === 'delete') {
       annotations.value = annotations.value.filter(a => a.id !== action.annotation.id)
+      if (selectedAnnotationId.value === action.annotation.id) {
+        selectedAnnotationId.value = null
+      }
+    } else if (action.type === 'update') {
+      const idx = annotations.value.findIndex(a => a.id === action.annotation.id)
+      if (idx !== -1) {
+        annotations.value[idx] = JSON.parse(JSON.stringify(action.annotation))
+        selectedAnnotationId.value = action.annotation.id
+      }
     }
     reindexAnnotations()
     undoStack.value.push(action)
@@ -277,6 +375,7 @@ export const useOverlayStore = defineStore('overlay', () => {
   return {
     activeTool,
     annotations,
+    selectedAnnotationId,
     undoStack,
     redoStack,
     captureId,
@@ -292,6 +391,9 @@ export const useOverlayStore = defineStore('overlay', () => {
     currentStrokeWidth,
     init,
     setTool,
+    selectAnnotation,
+    updateAnnotation,
+    duplicateAnnotation,
     setColor,
     setStrokeWidth,
     setCropBox,

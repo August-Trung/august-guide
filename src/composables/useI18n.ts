@@ -293,6 +293,7 @@ const translations: Record<string, any> = {
       suspectedLabel: 'Note',
       suspectedPlaceholder: 'e.g. Click Button',
       eraseStroke: 'Erase stroke',
+      duplicate: 'Duplicate (Ctrl+D)',
       clearCanvas: 'Clear all',
       lineWidth: 'Line Width',
       color: 'Color',
@@ -302,6 +303,7 @@ const translations: Record<string, any> = {
       failedLoadScreenshot: 'Failed to load screenshot. Press Esc to cancel.',
       failedDisplayScreenshot: 'Failed to display screenshot. Press Esc to cancel.',
       drawTools: {
+        select: 'Select & Move',
         pen: 'Pen',
         arrow: 'Arrow',
         rect: 'Rectangle',
@@ -681,6 +683,7 @@ const translations: Record<string, any> = {
       suspectedLabel: 'Ghi chú',
       suspectedPlaceholder: 'Ví dụ: Nút Đăng nhập',
       eraseStroke: 'Xóa nét vẽ',
+      duplicate: 'Nhân bản (Ctrl+D)',
       clearCanvas: 'Xóa toàn bộ',
       lineWidth: 'Độ dày nét',
       color: 'Màu sắc',
@@ -690,6 +693,7 @@ const translations: Record<string, any> = {
       failedLoadScreenshot: 'Không thể tải ảnh chụp màn hình. Nhấn Esc để hủy.',
       failedDisplayScreenshot: 'Không thể hiển thị ảnh chụp màn hình. Nhấn Esc để hủy.',
       drawTools: {
+        select: 'Chọn & Di chuyển',
         pen: 'Bút vẽ',
         arrow: 'Mũi tên',
         rect: 'Hình chữ nhật',

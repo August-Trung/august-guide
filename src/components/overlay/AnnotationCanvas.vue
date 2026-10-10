@@ -44,8 +44,11 @@
         <i class="mdi mr-1" :class="selectedAnnotation?.showBadge ? 'mdi-numeric-off' : 'mdi-numeric'"></i>
         <span>{{ selectedAnnotation?.showBadge ? 'Xóa số thứ tự (giữ nét vẽ)' : 'Gắn lại số thứ tự' }}</span>
       </button>
+      <button class="context-menu-item" @click="duplicateSelected">
+        <i class="mdi mdi-content-copy mr-1"></i> Nhân bản nét vẽ (Ctrl+D)
+      </button>
       <button class="context-menu-item" @click="deleteSelected">
-        <i class="mdi mdi-delete-outline mr-1"></i> {{ t('overlay.eraseStroke') || 'Xóa nét vẽ này' }}
+        <i class="mdi mdi-delete-outline mr-1"></i> {{ t('overlay.eraseStroke') || 'Xóa nét vẽ này (Del)' }}
       </button>
     </div>
   </div>
@@ -87,6 +90,8 @@ const overlayStore = useOverlayStore()
 
 // Initialize Annotation drawing composable
 const {
+  isDrawing,
+  customCursor,
   textInputState,
   hoveredAnnotationId,
   contextMenuState,
@@ -99,6 +104,8 @@ const {
   clearHover,
   commitTextInput,
   cancelTextInput,
+  cancelCurrentDrawing,
+  drawSelectionPreview,
   redrawCommittedCanvas,
   copyToClipboard,
   getMergedCanvas
@@ -110,7 +117,9 @@ const {
 )
 
 const canvasCursor = computed(() => {
+  if (customCursor.value) return customCursor.value
   if (hoveredAnnotationId.value) return 'pointer'
+  if (overlayStore.activeTool === 'select') return 'default'
   return overlayStore.activeTool ? 'crosshair' : 'default'
 })
 
@@ -122,6 +131,14 @@ const selectedAnnotation = computed(() => {
 const deleteSelected = () => {
   if (contextMenuState.value.annotationId) {
     deleteAnnotationById(contextMenuState.value.annotationId)
+  }
+}
+
+const duplicateSelected = () => {
+  if (contextMenuState.value.annotationId) {
+    overlayStore.duplicateAnnotation(contextMenuState.value.annotationId)
+    contextMenuState.value.visible = false
+    drawSelectionPreview()
   }
 }
 
@@ -156,29 +173,6 @@ const loadScreenshot = async () => {
   }
 }
 
-// Global key handlers (Ctrl+C, Ctrl+S)
-const handleKeyDown = async (e: KeyboardEvent) => {
-  if (textInputState.value.visible) return
-
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') {
-    e.preventDefault()
-    const copied = await copyToClipboard()
-    if (copied) {
-      setTimeout(() => {
-        import('@/services/tauriCommands').then(({ closeOverlay }) => closeOverlay())
-      }, 300)
-    }
-  } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
-    e.preventDefault()
-    const merged = getMergedCanvas()
-    if (merged) {
-      const dataUrl = merged.toDataURL('image/png')
-      await overlayStore.saveAndClose(dataUrl)
-      import('@/services/tauriCommands').then(({ closeOverlay }) => closeOverlay())
-    }
-  }
-}
-
 // Watch for floating text input visibility to autofocus
 watch(() => textInputState.value.visible, (visible) => {
   if (visible) {
@@ -195,13 +189,11 @@ watch(() => props.screenshotUrl, () => {
 
 onMounted(() => {
   window.addEventListener('resize', resizeCanvases)
-  window.addEventListener('keydown', handleKeyDown)
   loadScreenshot()
 })
 
 onUnmounted(() => {
   window.removeEventListener('resize', resizeCanvases)
-  window.removeEventListener('keydown', handleKeyDown)
 })
 
 // Expose canvas elements and contexts for use in other files
@@ -211,6 +203,8 @@ defineExpose({
   drawingCanvasRef,
   hoveredAnnotationId,
   clearHover,
+  cancelCurrentDrawing,
+  drawSelectionPreview,
   copyToClipboard,
   getMergedCanvas,
   getScreenshotCtx: () => screenshotCtx,

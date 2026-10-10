@@ -58,6 +58,10 @@ export function useAnnotation(
   })
 
   const hoveredAnnotationId = ref<string | null>(null)
+  const interactionMode = ref<'move' | 'resize' | null>(null)
+  const activeHandle = ref<string | null>(null)
+  const initialAnnotationState = ref<Annotation | null>(null)
+  const customCursor = ref<string | null>(null)
   
   const contextMenuState = ref({
     visible: false,
@@ -197,6 +201,52 @@ export function useAnnotation(
     const color = overlayStore.currentColor || '#FF6B35'
     const strokeWidth = overlayStore.currentStrokeWidth || 2
 
+    // 1. Check if clicking on handles of the currently selected annotation
+    if (overlayStore.selectedAnnotationId) {
+      const selectedAnn = overlayStore.annotations.find(a => a.id === overlayStore.selectedAnnotationId)
+      if (selectedAnn) {
+        const handle = findHandleAt(coords, selectedAnn)
+        if (handle) {
+          interactionMode.value = handle.type === 'center' ? 'move' : 'resize'
+          activeHandle.value = handle.type
+          startPoint.value = coords
+          initialAnnotationState.value = JSON.parse(JSON.stringify(selectedAnn))
+          return
+        }
+      }
+    }
+
+    // 2. Check if clicking on any existing annotation body
+    const clickedAnn = findAnnotationAt(coords)
+    if (clickedAnn) {
+      if (overlayStore.activeTool === 'select' || overlayStore.selectedAnnotationId === clickedAnn.id || clickedAnn.type === 'marker') {
+        overlayStore.selectAnnotation(clickedAnn.id)
+        interactionMode.value = 'move'
+        startPoint.value = coords
+        initialAnnotationState.value = JSON.parse(JSON.stringify(clickedAnn))
+        redrawCommittedCanvas()
+        drawSelectionPreview()
+        return
+      }
+    }
+
+    // 3. If in select tool and clicked on empty space -> deselect
+    if (overlayStore.activeTool === 'select') {
+      overlayStore.selectAnnotation(null)
+      redrawCommittedCanvas()
+      const ctx = getDrawingCtx()
+      if (ctx) clearCanvas(drawingCanvasRef.value, ctx)
+      return
+    }
+
+    // 4. In other drawing tools: if an annotation was selected, clear selection before drawing
+    if (overlayStore.selectedAnnotationId) {
+      overlayStore.selectAnnotation(null)
+      redrawCommittedCanvas()
+      const ctx = getDrawingCtx()
+      if (ctx) clearCanvas(drawingCanvasRef.value, ctx)
+    }
+
     if (overlayStore.activeTool === 'marker') {
       // Place numbered marker directly
       const markerAnn: MarkerAnnotation = {
@@ -252,20 +302,133 @@ export function useAnnotation(
     const width = window.innerWidth
     const height = window.innerHeight
 
-    // Hover hit-testing (when not drawing and not in text typing state)
-    if (!isDrawing.value && !textInputState.value.visible) {
+    // Hover hit-testing and cursor updating when not dragging
+    if (!isDrawing.value && !interactionMode.value && !textInputState.value.visible) {
+      if (overlayStore.selectedAnnotationId) {
+        const selectedAnn = overlayStore.annotations.find(a => a.id === overlayStore.selectedAnnotationId)
+        if (selectedAnn) {
+          const handle = findHandleAt(coords, selectedAnn)
+          if (handle) {
+            customCursor.value = handle.cursor
+            return
+          }
+        }
+      }
+
       const ann = findAnnotationAt(coords)
       if (ann) {
-        if (hoveredAnnotationId.value !== ann.id) {
+        if (ann.id === overlayStore.selectedAnnotationId || overlayStore.activeTool === 'select' || ann.type === 'marker') {
+          customCursor.value = 'move'
+        } else {
+          customCursor.value = 'pointer'
+        }
+
+        if (hoveredAnnotationId.value !== ann.id && !overlayStore.selectedAnnotationId) {
           hoveredAnnotationId.value = ann.id
           drawHoverHighlight()
         }
       } else {
+        customCursor.value = null
         if (hoveredAnnotationId.value !== null) {
           hoveredAnnotationId.value = null
-          clearCanvas(canvas, ctx)
+          if (!overlayStore.selectedAnnotationId) {
+            clearCanvas(canvas, ctx)
+          } else {
+            drawSelectionPreview()
+          }
         }
       }
+      return
+    }
+
+    // Handle moving an annotation
+    if (interactionMode.value === 'move' && startPoint.value && initialAnnotationState.value && overlayStore.selectedAnnotationId) {
+      const dx = coords.x - startPoint.value.x
+      const dy = coords.y - startPoint.value.y
+      const initial = initialAnnotationState.value
+      const current = overlayStore.annotations.find(a => a.id === overlayStore.selectedAnnotationId)
+      if (!current) return
+
+      if (current.type === 'marker' && initial.type === 'marker') {
+        current.position = { x: initial.position.x + dx, y: initial.position.y + dy }
+      } else if (
+        (current.type === 'rect' || current.type === 'blur' || current.type === 'highlight' || current.type === 'spotlight') &&
+        (initial.type === 'rect' || initial.type === 'blur' || initial.type === 'highlight' || initial.type === 'spotlight')
+      ) {
+        current.topLeft = { x: initial.topLeft.x + dx, y: initial.topLeft.y + dy }
+      } else if (current.type === 'arrow' && initial.type === 'arrow') {
+        current.start = { x: initial.start.x + dx, y: initial.start.y + dy }
+        current.end = { x: initial.end.x + dx, y: initial.end.y + dy }
+      } else if (current.type === 'text' && initial.type === 'text') {
+        current.position = { x: initial.position.x + dx, y: initial.position.y + dy }
+      } else if (current.type === 'freedraw' && initial.type === 'freedraw') {
+        current.points = initial.points.map(p => ({ x: p.x + dx, y: p.y + dy }))
+      }
+
+      redrawCommittedCanvas()
+      drawSelectionPreview()
+      return
+    }
+
+    // Handle resizing an annotation
+    if (interactionMode.value === 'resize' && startPoint.value && initialAnnotationState.value && overlayStore.selectedAnnotationId) {
+      const dx = coords.x - startPoint.value.x
+      const dy = coords.y - startPoint.value.y
+      const initial = initialAnnotationState.value
+      const current = overlayStore.annotations.find(a => a.id === overlayStore.selectedAnnotationId)
+      if (!current) return
+
+      if (
+        (current.type === 'rect' || current.type === 'blur' || current.type === 'highlight' || current.type === 'spotlight') &&
+        (initial.type === 'rect' || initial.type === 'blur' || initial.type === 'highlight' || initial.type === 'spotlight')
+      ) {
+        const handle = activeHandle.value
+        let x = initial.topLeft.x
+        let y = initial.topLeft.y
+        let w = initial.width
+        let h = initial.height
+
+        if (handle === 'br') {
+          w = Math.max(10, initial.width + dx)
+          h = Math.max(10, initial.height + dy)
+        } else if (handle === 'r') {
+          w = Math.max(10, initial.width + dx)
+        } else if (handle === 'b') {
+          h = Math.max(10, initial.height + dy)
+        } else if (handle === 'tl') {
+          const newW = initial.width - dx
+          const newH = initial.height - dy
+          if (newW > 10) { x = initial.topLeft.x + dx; w = newW }
+          if (newH > 10) { y = initial.topLeft.y + dy; h = newH }
+        } else if (handle === 'tr') {
+          const newH = initial.height - dy
+          w = Math.max(10, initial.width + dx)
+          if (newH > 10) { y = initial.topLeft.y + dy; h = newH }
+        } else if (handle === 'bl') {
+          const newW = initial.width - dx
+          h = Math.max(10, initial.height + dy)
+          if (newW > 10) { x = initial.topLeft.x + dx; w = newW }
+        } else if (handle === 't') {
+          const newH = initial.height - dy
+          if (newH > 10) { y = initial.topLeft.y + dy; h = newH }
+        } else if (handle === 'l') {
+          const newW = initial.width - dx
+          if (newW > 10) { x = initial.topLeft.x + dx; w = newW }
+        }
+
+        current.topLeft = { x, y }
+        current.width = w
+        current.height = h
+      } else if (current.type === 'arrow' && initial.type === 'arrow') {
+        if (activeHandle.value === 'start') {
+          current.start = coords
+        } else if (activeHandle.value === 'end') {
+          current.end = coords
+        }
+      }
+
+      redrawCommittedCanvas()
+      drawSelectionPreview()
       return
     }
 
@@ -372,6 +535,24 @@ export function useAnnotation(
 
   // Handle mouseup events on drawing canvas
   const handleMouseUp = (e: MouseEvent) => {
+    if (interactionMode.value) {
+      if (overlayStore.selectedAnnotationId && initialAnnotationState.value) {
+        const current = overlayStore.annotations.find(a => a.id === overlayStore.selectedAnnotationId)
+        if (current) {
+          const hasChanged = JSON.stringify(current) !== JSON.stringify(initialAnnotationState.value)
+          if (hasChanged) {
+            overlayStore.updateAnnotation(current, true, initialAnnotationState.value)
+          }
+        }
+      }
+      interactionMode.value = null
+      activeHandle.value = null
+      initialAnnotationState.value = null
+      startPoint.value = null
+      drawSelectionPreview()
+      return
+    }
+
     if (!isDrawing.value || !startPoint.value || !drawingCanvasRef.value) return
     isDrawing.value = false
 
@@ -602,14 +783,118 @@ export function useAnnotation(
     return { x: 0, y: 0, w: 0, h: 0 }
   }
 
+  interface Handle {
+    type: string
+    x: number
+    y: number
+    cursor: string
+  }
+
+  const getHandlesForAnnotation = (ann: Annotation): Handle[] => {
+    if (ann.type === 'rect' || ann.type === 'blur' || ann.type === 'highlight' || ann.type === 'spotlight') {
+      const x = ann.topLeft.x
+      const y = ann.topLeft.y
+      const w = ann.width
+      const h = ann.height
+      return [
+        { type: 'tl', x, y, cursor: 'nwse-resize' },
+        { type: 't', x: x + w / 2, y, cursor: 'ns-resize' },
+        { type: 'tr', x: x + w, y, cursor: 'nesw-resize' },
+        { type: 'r', x: x + w, y: y + h / 2, cursor: 'ew-resize' },
+        { type: 'br', x: x + w, y: y + h, cursor: 'nwse-resize' },
+        { type: 'b', x: x + w / 2, y: y + h, cursor: 'ns-resize' },
+        { type: 'bl', x, y: y + h, cursor: 'nesw-resize' },
+        { type: 'l', x, y: y + h / 2, cursor: 'ew-resize' },
+      ]
+    } else if (ann.type === 'arrow') {
+      return [
+        { type: 'start', x: ann.start.x, y: ann.start.y, cursor: 'crosshair' },
+        { type: 'end', x: ann.end.x, y: ann.end.y, cursor: 'crosshair' },
+      ]
+    } else if (ann.type === 'marker') {
+      return []
+    } else if (ann.type === 'text') {
+      const box = getAnnotationBoundingBox(ann)
+      return [
+        { type: 'tl', x: box.x, y: box.y, cursor: 'move' },
+        { type: 'tr', x: box.x + box.w, y: box.y, cursor: 'move' },
+        { type: 'br', x: box.x + box.w, y: box.y + box.h, cursor: 'move' },
+        { type: 'bl', x: box.x, y: box.y + box.h, cursor: 'move' },
+      ]
+    }
+    return []
+  }
+
+  const findHandleAt = (coords: Point, ann: Annotation): Handle | null => {
+    const handles = getHandlesForAnnotation(ann)
+    const radiusSq = 12 * 12
+    for (const h of handles) {
+      const dx = coords.x - h.x
+      const dy = coords.y - h.y
+      if (dx * dx + dy * dy <= radiusSq) {
+        return h
+      }
+    }
+    return null
+  }
+
+  const drawSelectionPreview = () => {
+    const ctx = getDrawingCtx()
+    const canvas = drawingCanvasRef.value
+    if (!ctx || !canvas) return
+
+    clearCanvas(canvas, ctx)
+
+    if (!overlayStore.selectedAnnotationId) return
+
+    const ann = overlayStore.annotations.find(a => a.id === overlayStore.selectedAnnotationId)
+    if (!ann) return
+
+    const box = getAnnotationBoundingBox(ann)
+    ctx.save()
+
+    // Selection outline
+    ctx.strokeStyle = '#38BDF8'
+    ctx.lineWidth = 1.5
+    ctx.setLineDash([4, 4])
+
+    if (ann.type === 'marker') {
+      ctx.beginPath()
+      ctx.arc(ann.position.x, ann.position.y, 18, 0, Math.PI * 2)
+      ctx.stroke()
+    } else {
+      ctx.strokeRect(box.x - 3, box.y - 3, box.w + 6, box.h + 6)
+    }
+
+    // Draw handles
+    const handles = getHandlesForAnnotation(ann)
+    ctx.setLineDash([])
+    for (const h of handles) {
+      ctx.fillStyle = '#FFFFFF'
+      ctx.strokeStyle = '#0284C7'
+      ctx.lineWidth = 2
+      ctx.beginPath()
+      ctx.arc(h.x, h.y, 5, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.stroke()
+    }
+
+    ctx.restore()
+  }
+
   const findAnnotationAt = (coords: Point): Annotation | null => {
     for (let i = overlayStore.annotations.length - 1; i >= 0; i--) {
       const ann = overlayStore.annotations[i]
       if (ann.type === 'marker') {
-        if (distanceSq(coords, ann.position) <= 18 * 18) {
+        if (distanceSq(coords, ann.position) <= 22 * 22) {
           return ann
         }
       } else if (ann.type === 'rect' || ann.type === 'blur' || ann.type === 'highlight' || ann.type === 'spotlight') {
+        if (ann.showBadge && ann.number) {
+          if (distanceSq(coords, { x: ann.topLeft.x, y: ann.topLeft.y - 20 }) <= 20 * 20) {
+            return ann
+          }
+        }
         const xMin = Math.min(ann.topLeft.x, ann.topLeft.x + ann.width)
         const xMax = Math.max(ann.topLeft.x, ann.topLeft.x + ann.width)
         const yMin = Math.min(ann.topLeft.y, ann.topLeft.y + ann.height)
@@ -618,7 +903,12 @@ export function useAnnotation(
           return ann
         }
       } else if (ann.type === 'arrow') {
-        if (distanceToSegmentSq(coords, ann.start, ann.end) <= 10 * 10) {
+        if (ann.showBadge && ann.number) {
+          if (distanceSq(coords, ann.start) <= 20 * 20) {
+            return ann
+          }
+        }
+        if (distanceToSegmentSq(coords, ann.start, ann.end) <= 12 * 12) {
           return ann
         }
       } else if (ann.type === 'text') {
@@ -782,6 +1072,67 @@ export function useAnnotation(
     }
   }
 
+  /**
+   * ESC Key State Machine:
+   * Level 1: In-progress drawing or dragging -> cancel, revert changes, keep overlay open.
+   * Level 2: In-progress moving/resizing -> revert to initial state, keep overlay open.
+   * Level 3: Text input open -> cancel text input, keep overlay open.
+   * Level 4: Selected annotation -> deselect, keep overlay open.
+   * Returns true if an action was cancelled, false if completely idle.
+   */
+  const cancelCurrentDrawing = (): boolean => {
+    // Level 1: In-progress drawing
+    if (isDrawing.value) {
+      isDrawing.value = false
+      startPoint.value = null
+      overlayStore.pendingAnnotation = null
+      const ctx = getDrawingCtx()
+      if (ctx && drawingCanvasRef.value) {
+        clearCanvas(drawingCanvasRef.value, ctx)
+      }
+      if (overlayStore.selectedAnnotationId) {
+        drawSelectionPreview()
+      }
+      return true
+    }
+
+    // Level 2: In-progress moving or resizing
+    if (interactionMode.value) {
+      if (overlayStore.selectedAnnotationId && initialAnnotationState.value) {
+        const idx = overlayStore.annotations.findIndex(a => a.id === overlayStore.selectedAnnotationId)
+        if (idx !== -1) {
+          overlayStore.annotations[idx] = JSON.parse(JSON.stringify(initialAnnotationState.value))
+        }
+      }
+      interactionMode.value = null
+      activeHandle.value = null
+      initialAnnotationState.value = null
+      startPoint.value = null
+      redrawCommittedCanvas()
+      drawSelectionPreview()
+      return true
+    }
+
+    // Level 3: Text input active
+    if (textInputState.value.visible) {
+      cancelTextInput()
+      return true
+    }
+
+    // Level 4: Shape selected -> deselect
+    if (overlayStore.selectedAnnotationId) {
+      overlayStore.selectAnnotation(null)
+      const ctx = getDrawingCtx()
+      if (ctx && drawingCanvasRef.value) {
+        clearCanvas(drawingCanvasRef.value, ctx)
+      }
+      return true
+    }
+
+    // Completely idle
+    return false
+  }
+
   // Watch for activeTool changes to close context menu and clear hover
   watch(() => overlayStore.activeTool, () => {
     contextMenuState.value.visible = false
@@ -801,10 +1152,26 @@ export function useAnnotation(
   // Watch for annotations list updates to redraw committed layer
   watch(() => overlayStore.annotations, () => {
     redrawCommittedCanvas()
+    if (overlayStore.selectedAnnotationId) {
+      drawSelectionPreview()
+    }
   }, { deep: true })
+
+  // Watch for selectedAnnotationId changes to update selection preview
+  watch(() => overlayStore.selectedAnnotationId, (newId) => {
+    if (newId) {
+      drawSelectionPreview()
+    } else if (!isDrawing.value && !interactionMode.value) {
+      const ctx = getDrawingCtx()
+      if (ctx && drawingCanvasRef.value) {
+        clearCanvas(drawingCanvasRef.value, ctx)
+      }
+    }
+  })
 
   return {
     isDrawing,
+    customCursor,
     textInputState,
     hoveredAnnotationId,
     contextMenuState,
@@ -817,6 +1184,8 @@ export function useAnnotation(
     clearHover,
     commitTextInput,
     cancelTextInput,
+    cancelCurrentDrawing,
+    drawSelectionPreview,
     redrawCommittedCanvas,
     getMergedCanvas,
     copyToClipboard,

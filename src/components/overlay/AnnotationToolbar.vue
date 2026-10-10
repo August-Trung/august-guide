@@ -5,6 +5,17 @@
       <div v-if="!collapsed" class="annotation-toolbar">
         <!-- Drawing Tools -->
         <div class="tools-group">
+          <!-- Select / Move Tool (V) -->
+          <button
+            type="button"
+            class="toolbar-tool-btn"
+            :class="{ active: activeTool === 'select' }"
+            :title="(t('overlay.drawTools.select') || 'Chọn & Di chuyển') + ' (V)'"
+            @click="selectTool('select')"
+          >
+            <i class="mdi mdi-cursor-default-outline"></i>
+          </button>
+
           <!-- Marker Tool (1) -->
           <button
             type="button"
@@ -104,6 +115,37 @@
             <i class="mdi mdi-crop"></i>
           </button>
         </div>
+
+        <!-- Selection Quick Actions -->
+        <template v-if="overlayStore.selectedAnnotationId">
+          <div class="separator"></div>
+          <div class="tools-group">
+            <button
+              type="button"
+              class="toolbar-tool-btn"
+              title="Nhân bản hình vẽ đã chọn (Ctrl + D)"
+              @click="overlayStore.duplicateAnnotation(overlayStore.selectedAnnotationId)"
+            >
+              <i class="mdi mdi-content-copy"></i>
+            </button>
+            <button
+              type="button"
+              class="toolbar-tool-btn delete-tool-btn"
+              title="Xóa hình vẽ đã chọn (Delete / Backspace)"
+              @click="deleteSelected"
+            >
+              <i class="mdi mdi-delete-outline"></i>
+            </button>
+            <button
+              type="button"
+              class="toolbar-tool-btn"
+              title="Bỏ chọn (Esc)"
+              @click="overlayStore.selectAnnotation(null)"
+            >
+              <i class="mdi mdi-close"></i>
+            </button>
+          </div>
+        </template>
 
         <div class="separator"></div>
 
@@ -268,6 +310,14 @@ const selectTool = (tool: any) => {
     overlayStore.setTool(tool)
   }
 }
+
+const deleteSelected = () => {
+  if (overlayStore.selectedAnnotationId) {
+    const id = overlayStore.selectedAnnotationId
+    overlayStore.selectAnnotation(null)
+    overlayStore.removeAnnotation(id)
+  }
+}
 </script>
 
 <style scoped>
@@ -403,6 +453,11 @@ const selectTool = (tool: any) => {
   background: rgba(255, 255, 255, 0.12);
   color: #ffffff;
   transform: translateY(-1px);
+}
+
+.toolbar-tool-btn.delete-tool-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
 }
 
 .toolbar-tool-btn.active {

@@ -190,7 +190,7 @@ const handleKeyDown = async (e: KeyboardEvent) => {
     return
   }
 
-  // Ctrl+Z (Undo) and Ctrl+Y (Redo)
+  // Ctrl+Z (Undo) and Ctrl+Y (Redo), Ctrl+D (Duplicate), Ctrl+C (Copy), Ctrl+S (Save)
   if (e.ctrlKey) {
     if (e.key.toLowerCase() === 'z') {
       e.preventDefault()
@@ -198,6 +198,12 @@ const handleKeyDown = async (e: KeyboardEvent) => {
     } else if (e.key.toLowerCase() === 'y') {
       e.preventDefault()
       overlayStore.redo()
+    } else if (e.key.toLowerCase() === 'd') {
+      if (overlayStore.selectedAnnotationId) {
+        e.preventDefault()
+        overlayStore.duplicateAnnotation(overlayStore.selectedAnnotationId)
+        annotationCanvasRef.value?.drawSelectionPreview?.()
+      }
     } else if (e.key.toLowerCase() === 'c') {
       e.preventDefault()
       await handleCopy()
@@ -209,13 +215,24 @@ const handleKeyDown = async (e: KeyboardEvent) => {
   }
 
   if (e.key === 'Escape') {
+    const handled = annotationCanvasRef.value?.cancelCurrentDrawing?.()
+    if (handled) {
+      return
+    }
     if (overlayStore.showStepNotes) {
       overlayStore.showStepNotes = false
     } else {
       handleCancel()
     }
   } else if (e.key === 'Delete' || e.key === 'Backspace') {
-    if (annotationCanvasRef.value?.hoveredAnnotationId) {
+    if (overlayStore.selectedAnnotationId) {
+      e.preventDefault()
+      const id = overlayStore.selectedAnnotationId
+      overlayStore.selectAnnotation(null)
+      overlayStore.removeAnnotation(id)
+      annotationCanvasRef.value?.drawSelectionPreview?.()
+    } else if (annotationCanvasRef.value?.hoveredAnnotationId) {
+      e.preventDefault()
       overlayStore.removeAnnotation(annotationCanvasRef.value.hoveredAnnotationId)
       annotationCanvasRef.value.clearHover()
     }
@@ -227,6 +244,8 @@ const handleKeyDown = async (e: KeyboardEvent) => {
     const bothCollapsed = isTopBarCollapsed.value && isBottomBarCollapsed.value
     isTopBarCollapsed.value = !bothCollapsed
     isBottomBarCollapsed.value = !bothCollapsed
+  } else if (e.key.toLowerCase() === 'v') {
+    overlayStore.setTool('select')
   } else if (e.key === '1') {
     overlayStore.setTool('marker')
   } else if (e.key === '2') {
