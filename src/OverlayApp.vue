@@ -205,18 +205,14 @@ const handleKeyDown = async (e: KeyboardEvent) => {
         annotationCanvasRef.value?.drawSelectionPreview?.()
       }
     } else if (e.shiftKey && e.key.toLowerCase() === 'c') {
-      // Ctrl + Shift + C: Luôn copy toàn bộ ảnh vào clipboard hệ thống
       e.preventDefault()
       await handleCopy()
     } else if (e.key.toLowerCase() === 'c') {
       e.preventDefault()
       if (overlayStore.selectedAnnotationId) {
-        const ok = overlayStore.copySelectedAnnotation()
-        if (ok) {
-          uiStore.showToast({ message: 'Đã sao chép nét vẽ!', type: 'success' })
-        }
+        overlayStore.copySelectedAnnotation()
+        uiStore.showToast({ message: 'Đã sao chép nét vẽ!', type: 'success' })
       } else {
-        // Không chọn hình nào -> copy toàn bộ ảnh vào clipboard hệ thống
         await handleCopy()
       }
     } else if (e.key.toLowerCase() === 'v') {
