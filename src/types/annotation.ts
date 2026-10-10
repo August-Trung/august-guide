@@ -20,6 +20,7 @@ export interface BaseAnnotation {
   strokeWidth: number
   showBadge?: boolean
   number?: number
+  badgeOffset?: Point
   stepNote?: string
 }
 

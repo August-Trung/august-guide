@@ -58,7 +58,7 @@ export function useAnnotation(
   })
 
   const hoveredAnnotationId = ref<string | null>(null)
-  const interactionMode = ref<'move' | 'resize' | null>(null)
+  const interactionMode = ref<'move' | 'resize' | 'badge_move' | null>(null)
   const activeHandle = ref<string | null>(null)
   const initialAnnotationState = ref<Annotation | null>(null)
   const customCursor = ref<string | null>(null)
@@ -69,6 +69,32 @@ export function useAnnotation(
     y: 0,
     annotationId: ''
   })
+
+  const distanceSq = (p1: Point, p2: Point) => {
+    const dx = p1.x - p2.x
+    const dy = p1.y - p2.y
+    return dx * dx + dy * dy
+  }
+
+  const getAnnotationBadgeCenter = (ann: Annotation): Point | null => {
+    if (!ann.showBadge || !ann.number) return null
+    let base: Point = { x: 0, y: 0 }
+    if (ann.type === 'marker') {
+      base = { x: ann.position.x, y: ann.position.y }
+    } else if (ann.type === 'rect' || ann.type === 'blur' || ann.type === 'highlight' || ann.type === 'spotlight') {
+      base = { x: ann.topLeft.x, y: ann.topLeft.y - 20 }
+    } else if (ann.type === 'arrow') {
+      base = { x: ann.start.x, y: ann.start.y }
+    } else if (ann.type === 'text') {
+      base = { x: ann.position.x - 20, y: ann.position.y + 12 }
+    } else if (ann.type === 'freedraw') {
+      base = ann.points[0] ? { x: ann.points[0].x, y: ann.points[0].y } : { x: 0, y: 0 }
+    }
+    return {
+      x: base.x + (ann.badgeOffset?.x ?? 0),
+      y: base.y + (ann.badgeOffset?.y ?? 0)
+    }
+  }
 
   /**
    * Helper to render a single annotation on a given 2D context.
@@ -88,39 +114,46 @@ export function useAnnotation(
     } else if (ann.type === 'rect') {
       renderRect(ctx, ann.topLeft.x, ann.topLeft.y, ann.width, ann.height, isPending, color, strokeWidth)
       if (ann.showBadge && ann.number) {
-        renderMarker(ctx, ann.topLeft.x, ann.topLeft.y - 20, ann.number, isPending, color)
+        const bp = getAnnotationBadgeCenter(ann)!
+        renderMarker(ctx, bp.x, bp.y, ann.number, isPending, color)
       }
     } else if (ann.type === 'arrow') {
       const hasBadge = !!(ann.showBadge && ann.number)
       renderArrow(ctx, ann.start.x, ann.start.y, ann.end.x, ann.end.y, isPending, color, Math.max(3, strokeWidth + 1), hasBadge)
       if (hasBadge) {
-        renderMarker(ctx, ann.start.x, ann.start.y, ann.number || 0, isPending, color)
+        const bp = getAnnotationBadgeCenter(ann)!
+        renderMarker(ctx, bp.x, bp.y, ann.number || 0, isPending, color)
       }
     } else if (ann.type === 'text') {
       renderText(ctx, ann.position.x, ann.position.y, ann.text, '#FFFFFF', 'rgba(15, 17, 23, 0.85)')
       if (ann.showBadge && ann.number) {
-        renderMarker(ctx, ann.position.x - 20, ann.position.y + 12, ann.number, isPending, color)
+        const bp = getAnnotationBadgeCenter(ann)!
+        renderMarker(ctx, bp.x, bp.y, ann.number, isPending, color)
       }
     } else if (ann.type === 'blur') {
       const screenshotCanvas = drawingCanvasRef.value?.parentElement?.querySelector('.z-screenshot') as HTMLCanvasElement | null
       renderBlur(ctx, ann.topLeft.x, ann.topLeft.y, ann.width, ann.height, screenshotCanvas)
       if (ann.showBadge && ann.number) {
-        renderMarker(ctx, ann.topLeft.x, ann.topLeft.y - 20, ann.number, isPending, color)
+        const bp = getAnnotationBadgeCenter(ann)!
+        renderMarker(ctx, bp.x, bp.y, ann.number, isPending, color)
       }
     } else if (ann.type === 'highlight') {
       renderHighlight(ctx, ann.topLeft.x, ann.topLeft.y, ann.width, ann.height, isPending)
       if (ann.showBadge && ann.number) {
-        renderMarker(ctx, ann.topLeft.x, ann.topLeft.y - 20, ann.number, isPending, color)
+        const bp = getAnnotationBadgeCenter(ann)!
+        renderMarker(ctx, bp.x, bp.y, ann.number, isPending, color)
       }
     } else if (ann.type === 'spotlight') {
       renderSpotlight(ctx, ann.topLeft.x, ann.topLeft.y, ann.width, ann.height, width, height, isPending, color, strokeWidth)
       if (ann.showBadge && ann.number) {
-        renderMarker(ctx, ann.topLeft.x, ann.topLeft.y - 20, ann.number, isPending, color)
+        const bp = getAnnotationBadgeCenter(ann)!
+        renderMarker(ctx, bp.x, bp.y, ann.number, isPending, color)
       }
     } else if (ann.type === 'freedraw') {
       renderFreeDraw(ctx, ann.points, color, strokeWidth || 3)
       if (ann.showBadge && ann.number && ann.points.length > 0) {
-        renderMarker(ctx, ann.points[0].x, ann.points[0].y, ann.number, isPending, color)
+        const bp = getAnnotationBadgeCenter(ann)!
+        renderMarker(ctx, bp.x, bp.y, ann.number, isPending, color)
       }
     }
   }
@@ -200,6 +233,21 @@ export function useAnnotation(
     const coords = getCanvasCoords(drawingCanvasRef.value, e)
     const color = overlayStore.currentColor || '#FF6B35'
     const strokeWidth = overlayStore.currentStrokeWidth || 2
+
+    // 0. Check if clicking on the badge of any annotation with a badge
+    for (let i = overlayStore.annotations.length - 1; i >= 0; i--) {
+      const ann = overlayStore.annotations[i]
+      const bp = getAnnotationBadgeCenter(ann)
+      if (bp && distanceSq(coords, bp) <= 20 * 20) {
+        overlayStore.selectAnnotation(ann.id)
+        interactionMode.value = ann.type === 'marker' ? 'move' : 'badge_move'
+        startPoint.value = coords
+        initialAnnotationState.value = JSON.parse(JSON.stringify(ann))
+        redrawCommittedCanvas()
+        drawSelectionPreview()
+        return
+      }
+    }
 
     // 1. Check if clicking on handles of the currently selected annotation
     if (overlayStore.selectedAnnotationId) {
@@ -307,11 +355,30 @@ export function useAnnotation(
       if (overlayStore.selectedAnnotationId) {
         const selectedAnn = overlayStore.annotations.find(a => a.id === overlayStore.selectedAnnotationId)
         if (selectedAnn) {
+          const bp = getAnnotationBadgeCenter(selectedAnn)
+          if (bp && distanceSq(coords, bp) <= 20 * 20) {
+            customCursor.value = 'grab'
+            return
+          }
           const handle = findHandleAt(coords, selectedAnn)
           if (handle) {
             customCursor.value = handle.cursor
             return
           }
+        }
+      }
+
+      // Check if hovering over any badge
+      for (let i = overlayStore.annotations.length - 1; i >= 0; i--) {
+        const a = overlayStore.annotations[i]
+        const bp = getAnnotationBadgeCenter(a)
+        if (bp && distanceSq(coords, bp) <= 20 * 20) {
+          customCursor.value = 'grab'
+          if (hoveredAnnotationId.value !== a.id && !overlayStore.selectedAnnotationId) {
+            hoveredAnnotationId.value = a.id
+            drawHoverHighlight()
+          }
+          return
         }
       }
 
@@ -338,6 +405,26 @@ export function useAnnotation(
           }
         }
       }
+      return
+    }
+
+    // Handle moving the badge of an annotation
+    if (interactionMode.value === 'badge_move' && startPoint.value && initialAnnotationState.value && overlayStore.selectedAnnotationId) {
+      customCursor.value = 'grabbing'
+      const dx = coords.x - startPoint.value.x
+      const dy = coords.y - startPoint.value.y
+      const initial = initialAnnotationState.value
+      const current = overlayStore.annotations.find(a => a.id === overlayStore.selectedAnnotationId)
+      if (!current) return
+
+      const initOffset = initial.badgeOffset ?? { x: 0, y: 0 }
+      current.badgeOffset = {
+        x: initOffset.x + dx,
+        y: initOffset.y + dy
+      }
+
+      redrawCommittedCanvas()
+      drawSelectionPreview()
       return
     }
 
@@ -717,12 +804,6 @@ export function useAnnotation(
     }
   }
 
-  const distanceSq = (p1: Point, p2: Point) => {
-    const dx = p1.x - p2.x
-    const dy = p1.y - p2.y
-    return dx * dx + dy * dy
-  }
-
   const distanceToSegmentSq = (p: Point, a: Point, b: Point) => {
     const dx = b.x - a.x
     const dy = b.y - a.y
@@ -879,6 +960,19 @@ export function useAnnotation(
       ctx.stroke()
     }
 
+    // Draw movable badge indicator for non-marker annotations with a badge
+    if (ann.type !== 'marker' && ann.showBadge && ann.number) {
+      const bp = getAnnotationBadgeCenter(ann)
+      if (bp) {
+        ctx.strokeStyle = '#38BDF8'
+        ctx.lineWidth = 1.5
+        ctx.setLineDash([3, 3])
+        ctx.beginPath()
+        ctx.arc(bp.x, bp.y, 18, 0, Math.PI * 2)
+        ctx.stroke()
+      }
+    }
+
     ctx.restore()
   }
 
@@ -889,12 +983,14 @@ export function useAnnotation(
         if (distanceSq(coords, ann.position) <= 22 * 22) {
           return ann
         }
-      } else if (ann.type === 'rect' || ann.type === 'blur' || ann.type === 'highlight' || ann.type === 'spotlight') {
-        if (ann.showBadge && ann.number) {
-          if (distanceSq(coords, { x: ann.topLeft.x, y: ann.topLeft.y - 20 }) <= 20 * 20) {
-            return ann
-          }
+      } else {
+        const bp = getAnnotationBadgeCenter(ann)
+        if (bp && distanceSq(coords, bp) <= 20 * 20) {
+          return ann
         }
+      }
+
+      if (ann.type === 'rect' || ann.type === 'blur' || ann.type === 'highlight' || ann.type === 'spotlight') {
         const xMin = Math.min(ann.topLeft.x, ann.topLeft.x + ann.width)
         const xMax = Math.max(ann.topLeft.x, ann.topLeft.x + ann.width)
         const yMin = Math.min(ann.topLeft.y, ann.topLeft.y + ann.height)
@@ -903,11 +999,6 @@ export function useAnnotation(
           return ann
         }
       } else if (ann.type === 'arrow') {
-        if (ann.showBadge && ann.number) {
-          if (distanceSq(coords, ann.start) <= 20 * 20) {
-            return ann
-          }
-        }
         if (distanceToSegmentSq(coords, ann.start, ann.end) <= 12 * 12) {
           return ann
         }

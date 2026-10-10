@@ -29,7 +29,7 @@
           <div class="text-h6 font-weight-bold text-primary">
             {{ session.captureCount || 0 }}
           </div>
-          <div class="text-caption text-medium-emphasis text-uppercase">{{ t('common.steps', 'Ảnh hướng dẫn') }}</div>
+          <div class="text-caption text-medium-emphasis text-uppercase">{{ t('common.screenshots', 'Ảnh chụp') }}</div>
         </v-col>
       </v-row>
     </v-card-item>

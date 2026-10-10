@@ -94,12 +94,12 @@
         <!-- Guide Steps List Header -->
         <div class="d-flex align-center justify-space-between mb-4 flex-wrap gap-2">
           <div class="d-flex align-center gap-2">
-            <v-icon icon="mdi-format-list-numbered" color="primary" size="24"></v-icon>
+            <v-icon icon="mdi-image-multiple-outline" color="primary" size="24"></v-icon>
             <span class="text-h6 font-weight-bold text-white">
-              Các bước hướng dẫn
+              Danh sách ảnh chụp hướng dẫn
             </span>
             <v-chip color="primary" size="small" variant="tonal" class="font-weight-bold ml-2">
-              {{ captures.length }} bước
+              {{ captures.length }} ảnh
             </v-chip>
           </div>
           <span class="text-caption text-medium-emphasis">
@@ -114,9 +114,9 @@
 
         <div v-else-if="captures.length === 0" class="text-center py-16 px-4 border rounded-lg bg-surface-variant-subtle">
           <v-icon icon="mdi-camera-plus-outline" size="64" color="primary" class="mb-3 opacity-80"></v-icon>
-          <div class="text-h6 font-weight-bold text-white mb-2">Chưa có bước hướng dẫn nào</div>
+          <div class="text-h6 font-weight-bold text-white mb-2">Chưa có ảnh chụp nào trong bài hướng dẫn này</div>
           <p class="text-body-2 text-medium-emphasis mb-6" style="max-width: 500px; margin: 0 auto;">
-            Bấm nút "Chụp màn hình" ở góc trên để chụp bước đầu tiên và vẽ các ghi chú, mũi tên hướng dẫn.
+            Bấm nút "Chụp màn hình" ở góc trên để chụp ảnh đầu tiên và vẽ các ghi chú, mũi tên hướng dẫn.
           </p>
           <v-btn
             color="primary"
@@ -126,7 +126,7 @@
             :loading="isCapturing"
             @click="handleCapture"
           >
-            Chụp bước đầu tiên
+            Chụp ảnh đầu tiên
           </v-btn>
         </div>
 
@@ -159,7 +159,7 @@
                   </template>
                 </v-img>
 
-                <!-- Floating Step Number Badge -->
+                <!-- Floating Capture Number Badge -->
                 <v-chip
                   color="primary"
                   size="small"
@@ -167,7 +167,7 @@
                   class="position-absolute font-weight-bold elevation-2"
                   style="top: 10px; left: 10px; z-index: 2;"
                 >
-                  Bước {{ index + 1 }}
+                  Ảnh {{ index + 1 }}
                 </v-chip>
 
                 <!-- Quick Pin to Screen Button -->
@@ -185,8 +185,8 @@
 
               <!-- Card Body -->
               <v-card-item class="pa-3 flex-grow-1">
-                <div class="text-subtitle-2 font-weight-bold text-truncate text-white mb-1" :title="cap.windowTitle || ('Bước ' + (index + 1))">
-                  {{ cap.windowTitle || ('Bước ' + (index + 1)) }}
+                <div class="text-subtitle-2 font-weight-bold text-truncate text-white mb-1" :title="cap.windowTitle || ('Ảnh ' + (index + 1))">
+                  {{ cap.windowTitle || ('Ảnh ' + (index + 1)) }}
                 </div>
                 <div class="text-caption text-medium-emphasis">
                   {{ formatDate(cap.createdAt) }} • {{ cap.monitorWidth }}×{{ cap.monitorHeight }}
@@ -202,7 +202,7 @@
                   size="small"
                   color="error"
                   variant="text"
-                  title="Xóa bước này"
+                  title="Xóa ảnh này"
                   @click.stop="promptDeleteCapture(cap.id)"
                 ></v-btn>
 
@@ -237,7 +237,7 @@
     <!-- Delete Capture Confirmation Dialog -->
     <ConfirmDialog
       v-model="showDeleteCaptureDialog"
-      title="Xóa bước hướng dẫn"
+      title="Xóa ảnh chụp hướng dẫn"
       message="Bạn có chắc chắn muốn xóa ảnh chụp này và toàn bộ các nét vẽ kèm theo không? Thao tác này không thể hoàn tác."
       confirm-text="Xóa"
       confirm-color="error"
