@@ -84,6 +84,10 @@ pub async fn save_capture_annotations(
         .transaction()
         .map_err(|e| AppError::Database(format!("Failed to start transaction: {}", e)))?;
 
+    // Clean up existing issues for this capture to support re-editing without duplicate entries
+    tx.execute("DELETE FROM issues WHERE capture_id = ?1", rusqlite::params![capture_id])
+        .map_err(|e| AppError::Database(format!("Failed to clean existing capture issues: {}", e)))?;
+
     issue_repo::create_batch(
         &tx,
         &capture_id,
@@ -124,6 +128,25 @@ pub fn get_issues(state: State<'_, AppState>, session_id: String) -> AppResult<V
         .lock()
         .map_err(|e| AppError::Database(e.to_string()))?;
     let mut issues = issue_repo::get_by_session(&conn, &session_id)?;
+
+    for issue in &mut issues {
+        if let Some(ref path) = issue.crop_path {
+            let abs_path = state.app_data_dir.join(path);
+            issue.crop_path = Some(abs_path.to_string_lossy().to_string());
+        }
+    }
+
+    Ok(issues)
+}
+
+/// Retrieve all active issues associated with a capture ID.
+#[tauri::command]
+pub fn get_issues_by_capture(state: State<'_, AppState>, capture_id: String) -> AppResult<Vec<Issue>> {
+    let conn = state
+        .db
+        .lock()
+        .map_err(|e| AppError::Database(e.to_string()))?;
+    let mut issues = issue_repo::get_by_capture(&conn, &capture_id)?;
 
     for issue in &mut issues {
         if let Some(ref path) = issue.crop_path {

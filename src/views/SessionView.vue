@@ -167,6 +167,19 @@
                     {{ formatDate(cap.createdAt) }} • {{ cap.monitorWidth }}×{{ cap.monitorHeight }}
                   </div>
                 </v-card-item>
+                <v-divider></v-divider>
+                <v-card-actions class="px-3 py-2 d-flex justify-end bg-surface-variant">
+                  <v-btn
+                    size="small"
+                    color="primary"
+                    variant="tonal"
+                    prepend-icon="mdi-pencil"
+                    class="text-none font-weight-bold"
+                    @click.stop="handleReEditCapture(cap)"
+                  >
+                    Sửa nét vẽ
+                  </v-btn>
+                </v-card-actions>
               </v-card>
             </v-col>
           </v-row>
@@ -274,7 +287,7 @@ import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { convertFileSrc } from '@tauri-apps/api/core'
-import { getSession, triggerCapture, openOverlay, shareSessionOnGdrive, getCapturesBySession, openAppFolder } from '@/services/tauriCommands'
+import { getSession, triggerCapture, openOverlay, reopenOverlayForEdit, shareSessionOnGdrive, getCapturesBySession, openAppFolder } from '@/services/tauriCommands'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useIssueStore } from '@/stores/issueStore'
 import { listenToEvent } from '@/services/tauriEvents'
@@ -398,6 +411,15 @@ const handleCapture = async () => {
     console.error('Capture trigger failed:', err)
   } finally {
     isCapturing.value = false
+  }
+}
+
+const handleReEditCapture = async (cap: Capture) => {
+  try {
+    await reopenOverlayForEdit(cap.id, cap.screenshotPath)
+  } catch (err: any) {
+    errorMessage.value = `Không thể mở chỉnh sửa nét vẽ: ${err?.message || err}`
+    showError.value = true
   }
 }
 

@@ -63,7 +63,7 @@
 import { nextTick, ref, onMounted, onUnmounted, computed } from 'vue'
 import { convertFileSrc } from '@tauri-apps/api/core'
 import { listenToEvent } from '@/services/tauriEvents'
-import { getCapture, cancelCapture, closeOverlay, showOverlay } from '@/services/tauriCommands'
+import { getCapture, getIssuesByCapture, cancelCapture, closeOverlay, showOverlay } from '@/services/tauriCommands'
 import OverlayStatusBar from '@/components/overlay/OverlayStatusBar.vue'
 import AnnotationCanvas from '@/components/overlay/AnnotationCanvas.vue'
 import AnnotationToolbar from '@/components/overlay/AnnotationToolbar.vue'
@@ -131,6 +131,40 @@ const scheduleRevealFallback = () => {
   }, 500)
 }
 
+const populateExistingAnnotations = async (id: string) => {
+  try {
+    const existingIssues = await getIssuesByCapture(id)
+    if (existingIssues && existingIssues.length > 0) {
+      const loaded: any[] = []
+      for (const issue of existingIssues) {
+        if (issue.annotationData) {
+          try {
+            const rawData = issue.annotationData as any
+            const parsed = typeof rawData === 'string' ? JSON.parse(rawData) : rawData
+            if (parsed && parsed.type && parsed.type !== 'full_screenshot') {
+              if (issue.title && !parsed.stepNote) {
+                parsed.stepNote = issue.title
+              }
+              loaded.push(parsed)
+            }
+          } catch (jsonErr) {
+            console.warn('[Overlay] Failed to parse annotationData:', jsonErr)
+          }
+        }
+      }
+      if (loaded.length > 0) {
+        overlayStore.annotations = loaded
+        overlayStore.reindexAnnotations()
+        nextTick(() => {
+          annotationCanvasRef.value?.redrawCommittedCanvas?.()
+        })
+      }
+    }
+  } catch (issueErr) {
+    console.warn('[Overlay] Could not fetch existing issues for re-edit:', issueErr)
+  }
+}
+
 const loadCaptureDetails = async (id: string) => {
   try {
     captureId.value = id
@@ -141,6 +175,7 @@ const loadCaptureDetails = async (id: string) => {
 
     overlayStore.init(id, data.screenshotPath, data)
     screenshotUrl.value = convertFileSrc(data.screenshotPath)
+    await populateExistingAnnotations(id)
     scheduleRevealFallback()
   } catch (e) {
     console.error('[Overlay] Failed to load capture details:', e)
@@ -154,6 +189,7 @@ const loadCaptureFromUrl = async (id: string, path: string) => {
   loadError.value = null
   overlayStore.init(id, path)
   screenshotUrl.value = convertFileSrc(path)
+  await populateExistingAnnotations(id)
   scheduleRevealFallback()
 }
 

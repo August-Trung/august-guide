@@ -220,6 +220,14 @@ export async function getIssues(sessionId: string): Promise<Issue[]> {
   return invoke<Issue[]>('get_issues', { sessionId })
 }
 
+export async function getIssuesByCapture(captureId: string): Promise<Issue[]> {
+  return invoke<Issue[]>('get_issues_by_capture', { captureId, capture_id: captureId })
+}
+
+export async function reopenOverlayForEdit(captureId: string, screenshotPath?: string): Promise<void> {
+  return invoke<void>('open_overlay', { captureId, screenshotPath: screenshotPath || null })
+}
+
 export async function getIssue(id: string): Promise<Issue> {
   return invoke<Issue>('get_issue', { id })
 }
