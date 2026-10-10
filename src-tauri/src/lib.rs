@@ -81,6 +81,7 @@ pub fn run() {
             commands::capture_cmds::close_overlay,
             commands::capture_cmds::open_pin_window,
             commands::capture_cmds::cancel_capture,
+            commands::capture_cmds::delete_capture,
             commands::capture_cmds::get_capture,
             commands::capture_cmds::get_captures_by_session,
             commands::capture_cmds::log_from_js,

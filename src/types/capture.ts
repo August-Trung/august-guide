@@ -2,6 +2,7 @@ export interface Capture {
   id: string
   sessionId: string
   screenshotPath: string
+  annotatedScreenshotPath?: string | null
   monitorName: string
   monitorX: number
   monitorY: number

@@ -6,6 +6,7 @@ pub struct Capture {
     pub id: String,
     pub session_id: String,
     pub screenshot_path: String,
+    pub annotated_screenshot_path: Option<String>,
     pub monitor_name: String,
     pub monitor_x: i32,
     pub monitor_y: i32,

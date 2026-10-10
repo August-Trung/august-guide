@@ -159,6 +159,13 @@ export async function getCapturesBySession(sessionId: string): Promise<Capture[]
   return invoke<Capture[]>('get_captures_by_session', { sessionId })
 }
 
+/**
+ * Xóa một lượt chụp (Capture) khỏi Session.
+ */
+export async function deleteCapture(id: string): Promise<void> {
+  return invoke<void>('delete_capture', { id })
+}
+
 export interface StorageInfo {
   currentPath: string
   defaultPath: string

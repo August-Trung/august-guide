@@ -238,6 +238,13 @@ pub fn get_capture(state: State<'_, AppState>, id: String) -> AppResult<Capture>
 
     // Đổi screenshot_path thành đường dẫn tuyệt đối để frontend nạp được qua asset protocol
     let abs_path = state.app_data_dir.join(&capture.screenshot_path);
+    let annotated_rel = capture.screenshot_path.replace(".png", "_annotated.png");
+    let abs_annotated = state.app_data_dir.join(&annotated_rel);
+    if abs_annotated.exists() {
+        capture.annotated_screenshot_path = Some(abs_annotated.to_string_lossy().to_string());
+    } else {
+        capture.annotated_screenshot_path = None;
+    }
     capture.screenshot_path = abs_path.to_string_lossy().to_string();
 
     Ok(capture)
@@ -257,10 +264,35 @@ pub fn get_captures_by_session(
 
     for capture in &mut captures {
         let abs_path = state.app_data_dir.join(&capture.screenshot_path);
+        let annotated_rel = capture.screenshot_path.replace(".png", "_annotated.png");
+        let abs_annotated = state.app_data_dir.join(&annotated_rel);
+        if abs_annotated.exists() {
+            capture.annotated_screenshot_path = Some(abs_annotated.to_string_lossy().to_string());
+        } else {
+            capture.annotated_screenshot_path = None;
+        }
         capture.screenshot_path = abs_path.to_string_lossy().to_string();
     }
 
     Ok(captures)
+}
+
+/// Xóa một lượt chụp (Capture) khỏi Session (xóa file ảnh trên đĩa và soft-delete trong DB).
+#[tauri::command]
+pub fn delete_capture(state: State<'_, AppState>, id: String) -> AppResult<()> {
+    let conn = state
+        .db
+        .lock()
+        .map_err(|e| AppError::Database(e.to_string()))?;
+    let capture = capture_repo::get_capture_by_id(&conn, &id)?;
+
+    // Xóa file screenshot và annotated trên đĩa
+    let _ = file_storage::delete_capture_files(&state.app_data_dir, &capture.screenshot_path);
+
+    // Soft delete capture (DB trigger tự động cascade soft delete sang issues)
+    capture_repo::delete_capture(&conn, &id)?;
+
+    Ok(())
 }
 
 /// In log từ frontend overlay lên terminal backend.

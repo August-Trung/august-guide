@@ -15,6 +15,7 @@ pub fn get_capture_by_id(conn: &Connection, id: &str) -> AppResult<Capture> {
                 id: row.get(0)?,
                 session_id: row.get(1)?,
                 screenshot_path: row.get(2)?,
+                annotated_screenshot_path: None,
                 monitor_name: row.get(3)?,
                 monitor_x: row.get(4)?,
                 monitor_y: row.get(5)?,
@@ -41,7 +42,7 @@ pub fn get_captures_by_session(conn: &Connection, session_id: &str) -> AppResult
         "SELECT id, session_id, screenshot_path, monitor_name, monitor_x, monitor_y, monitor_width, monitor_height, scale_factor, window_title, created_at
          FROM captures
          WHERE session_id = ?1 AND is_deleted = 0
-         ORDER BY created_at DESC"
+         ORDER BY created_at ASC"
     ).map_err(|e| AppError::Database(format!("Failed to prepare get_captures_by_session statement: {}", e)))?;
 
     let iter = stmt
@@ -50,6 +51,7 @@ pub fn get_captures_by_session(conn: &Connection, session_id: &str) -> AppResult
                 id: row.get(0)?,
                 session_id: row.get(1)?,
                 screenshot_path: row.get(2)?,
+                annotated_screenshot_path: None,
                 monitor_name: row.get(3)?,
                 monitor_x: row.get(4)?,
                 monitor_y: row.get(5)?,

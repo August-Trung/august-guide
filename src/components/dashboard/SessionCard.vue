@@ -25,17 +25,11 @@
 
       <!-- Stats section -->
       <v-row no-gutters class="mt-2 py-2 border-top border-bottom">
-        <v-col cols="6" class="text-center border-right">
+        <v-col cols="12" class="text-center">
           <div class="text-h6 font-weight-bold text-primary">
             {{ session.captureCount || 0 }}
           </div>
-          <div class="text-caption text-medium-emphasis text-uppercase">{{ t('common.screenshots', 'Screenshots') }}</div>
-        </v-col>
-        <v-col cols="6" class="text-center">
-          <div class="text-h6 font-weight-bold text-secondary">
-            {{ session.issueCount || 0 }}
-          </div>
-          <div class="text-caption text-medium-emphasis text-uppercase">{{ t('common.steps', 'Steps') }}</div>
+          <div class="text-caption text-medium-emphasis text-uppercase">{{ t('common.steps', 'Ảnh hướng dẫn') }}</div>
         </v-col>
       </v-row>
     </v-card-item>
