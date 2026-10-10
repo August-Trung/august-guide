@@ -416,8 +416,27 @@ pub async fn open_pin_window(
     #[cfg(not(debug_assertions))]
     let url = WebviewUrl::App("pin.html".into());
 
-    let w = width.max(200.0).min(1920.0);
-    let h = height.max(150.0).min(1080.0);
+    let max_w = 720.0;
+    let max_h = 480.0;
+
+    let orig_w = if width > 0.0 { width } else { 600.0 };
+    let orig_h = if height > 0.0 { height } else { 400.0 };
+
+    let aspect = orig_w / orig_h;
+    let mut w = orig_w;
+    let mut h = orig_h;
+
+    if w > max_w {
+        w = max_w;
+        h = w / aspect;
+    }
+    if h > max_h {
+        h = max_h;
+        w = h * aspect;
+    }
+
+    let final_w = w.max(240.0).min(max_w);
+    let final_h = h.max(160.0).min(max_h);
 
     WebviewWindowBuilder::new(&app, &label, url)
         .title("August Pin")
@@ -425,12 +444,30 @@ pub async fn open_pin_window(
         .always_on_top(true)
         .transparent(false)
         .resizable(true)
+        .shadow(true)
         .skip_taskbar(false)
         .initialization_script(&init_script)
-        .inner_size(w, h)
+        .inner_size(final_w, final_h)
         .build()
         .map_err(|e| AppError::Generic(format!("Failed to create pin window: {}", e)))?;
 
+    Ok(())
+}
+
+/// Đóng cửa sổ ghim ảnh (hoặc đóng tất cả cửa sổ ghim nếu không truyền label).
+#[tauri::command]
+pub fn close_pin_window(app: AppHandle, label: Option<String>) -> AppResult<()> {
+    if let Some(lbl) = label {
+        if let Some(window) = app.get_webview_window(&lbl) {
+            let _ = window.close();
+        }
+    } else {
+        for (lbl, window) in app.webview_windows() {
+            if lbl.starts_with("pin_") {
+                let _ = window.close();
+            }
+        }
+    }
     Ok(())
 }
 

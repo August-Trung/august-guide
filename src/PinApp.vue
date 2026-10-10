@@ -13,7 +13,7 @@
           <path d="M19 21H8V7h11m0-2H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2m-3-4H4a2 2 0 0 0-2 2v14h2V3h12V1Z"/>
         </svg>
       </button>
-      <button class="pin-btn close-btn" @click.stop="closePin" title="Đóng ghim (Esc / Double-click)">
+      <button class="pin-btn close-btn" @click.stop="closePin" title="Đóng ghim (Esc / Double-click / Click giữa)">
         <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
           <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/>
         </svg>
@@ -36,6 +36,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import { invoke } from '@tauri-apps/api/core'
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow'
 
 const imageUrl = ref<string>('')
@@ -51,6 +52,10 @@ const handleMouseDown = async (e: MouseEvent) => {
     } catch (err) {
       console.warn('startDragging error:', err)
     }
+  } else if (e.button === 1) {
+    // Middle click closes pin window
+    e.preventDefault()
+    await closePin()
   }
 }
 
@@ -63,9 +68,14 @@ const handleWheel = (e: WheelEvent) => {
 
 const closePin = async () => {
   try {
-    await currentWindow.close()
+    await invoke('close_pin_window', { label: currentWindow.label })
   } catch (err) {
-    console.error('Failed to close pin window:', err)
+    console.warn('close_pin_window fallback:', err)
+    try {
+      await currentWindow.close()
+    } catch (e) {
+      console.error('Failed to close pin window:', e)
+    }
   }
 }
 
@@ -84,6 +94,7 @@ const copyImage = async () => {
 
 const handleKeyDown = async (e: KeyboardEvent) => {
   if (e.key === 'Escape') {
+    e.preventDefault()
     await closePin()
   } else if (e.ctrlKey && e.key.toLowerCase() === 'c') {
     e.preventDefault()
@@ -117,7 +128,9 @@ onUnmounted(() => {
   height: 100vh;
   position: relative;
   overflow: hidden;
-  background: #111827;
+  background: #090d16;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -130,6 +143,8 @@ onUnmounted(() => {
 }
 
 .image-stage {
+  width: 100%;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -138,12 +153,13 @@ onUnmounted(() => {
 }
 
 .pinned-img {
-  max-width: 100%;
-  max-height: 100%;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
   display: block;
   user-select: none;
   -webkit-user-drag: none;
+  pointer-events: none;
 }
 
 .loading-box {
@@ -159,11 +175,11 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 6px;
-  background: rgba(15, 23, 42, 0.85);
+  background: rgba(15, 23, 42, 0.9);
   backdrop-filter: blur(8px);
   padding: 4px 8px;
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   opacity: 0;
   transition: opacity 0.2s ease;
   z-index: 100;

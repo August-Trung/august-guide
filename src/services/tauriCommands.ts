@@ -139,6 +139,13 @@ export async function openPinWindow(imageUrl: string, width: number, height: num
 }
 
 /**
+ * Đóng cửa sổ ghim ảnh.
+ */
+export async function closePinWindow(label?: string): Promise<void> {
+  return invoke<void>('close_pin_window', { label })
+}
+
+/**
  * Hủy lượt chụp hiện tại (xóa file và DB).
  */
 export async function cancelCapture(captureId: string): Promise<void> {
