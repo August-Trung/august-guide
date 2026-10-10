@@ -132,6 +132,13 @@ export async function closeOverlay(): Promise<void> {
 }
 
 /**
+ * Mở cửa sổ nhỏ nổi trên màn hình (Pin to screen).
+ */
+export async function openPinWindow(imageUrl: string, width: number, height: number): Promise<void> {
+  return invoke<void>('open_pin_window', { imageUrl, image_url: imageUrl, width, height })
+}
+
+/**
  * Hủy lượt chụp hiện tại (xóa file và DB).
  */
 export async function cancelCapture(captureId: string): Promise<void> {

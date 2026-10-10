@@ -30,6 +30,7 @@
       <AnnotationToolbar
         v-model:collapsed="isBottomBarCollapsed"
         @copy="handleCopy"
+        @pin="handlePin"
         @save="handleDone"
         @save-as="handleSaveAs"
       />
@@ -63,7 +64,7 @@
 import { nextTick, ref, onMounted, onUnmounted, computed } from 'vue'
 import { convertFileSrc } from '@tauri-apps/api/core'
 import { listenToEvent } from '@/services/tauriEvents'
-import { getCapture, getIssuesByCapture, cancelCapture, closeOverlay, showOverlay } from '@/services/tauriCommands'
+import { getCapture, getIssuesByCapture, cancelCapture, closeOverlay, showOverlay, openPinWindow } from '@/services/tauriCommands'
 import OverlayStatusBar from '@/components/overlay/OverlayStatusBar.vue'
 import AnnotationCanvas from '@/components/overlay/AnnotationCanvas.vue'
 import AnnotationToolbar from '@/components/overlay/AnnotationToolbar.vue'
@@ -313,8 +314,33 @@ const handleKeyDown = async (e: KeyboardEvent) => {
     overlayStore.setTool('highlight')
   } else if (e.key === '8') {
     overlayStore.setTool('spotlight')
+  } else if (e.key.toLowerCase() === 'p') {
+    e.preventDefault()
+    await handlePin()
   } else if (e.key === '9' || e.key.toLowerCase() === 'c') {
     overlayStore.setTool('crop')
+  }
+}
+
+const handlePin = async () => {
+  if (!annotationCanvasRef.value) return
+  const merged = annotationCanvasRef.value.getMergedCanvas()
+  if (!merged) return
+
+  const dataUrl = merged.toDataURL('image/png')
+  const dpr = overlayStore.monitorInfo?.scaleFactor || window.devicePixelRatio || 1
+  const width = merged.width / dpr
+  const height = merged.height / dpr
+
+  try {
+    await openPinWindow(dataUrl, width, height)
+    await closeOverlay()
+  } catch (err: any) {
+    console.error('[OverlayApp] Failed to pin window:', err)
+    uiStore.showToast({
+      message: `Không thể ghim ảnh: ${err?.message || err}`,
+      type: 'error'
+    })
   }
 }
 

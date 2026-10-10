@@ -232,6 +232,17 @@
             <span>Copy</span>
           </button>
 
+          <!-- Pin to Screen (P) -->
+          <button
+            type="button"
+            class="action-pill-btn pin-btn"
+            title="Ghim ảnh lên màn hình (P)"
+            @click="emit('pin')"
+          >
+            <i class="mdi mdi-pin"></i>
+            <span>Ghim</span>
+          </button>
+
           <!-- Save As File (Download) -->
           <button
             type="button"
@@ -293,6 +304,7 @@ const collapsed = defineModel<boolean>('collapsed', { default: false })
 
 const emit = defineEmits<{
   (e: 'copy'): void
+  (e: 'pin'): void
   (e: 'save'): void
   (e: 'saveAs'): void
 }>()
@@ -528,6 +540,18 @@ const deleteSelected = () => {
 
 .copy-btn:hover {
   background: #38bdf8;
+  color: #0f172a;
+  transform: translateY(-1px);
+}
+
+.pin-btn {
+  background: rgba(245, 158, 11, 0.16);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.28);
+}
+
+.pin-btn:hover {
+  background: #f59e0b;
   color: #0f172a;
   transform: translateY(-1px);
 }

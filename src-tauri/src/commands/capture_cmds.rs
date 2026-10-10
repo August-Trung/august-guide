@@ -362,4 +362,44 @@ pub fn auto_save_screenshot_copy(
     Ok(Some(target_str))
 }
 
+/// Mở một cửa sổ nhỏ nổi trên màn hình (Pin to screen) hiển thị ảnh vừa chụp/vẽ.
+#[tauri::command]
+pub async fn open_pin_window(
+    app: AppHandle,
+    image_url: String,
+    width: f64,
+    height: f64,
+) -> AppResult<()> {
+    let pin_id = crate::utils::id::new_uuid();
+    let label = format!("pin_{}", &pin_id[..8]);
+
+    let clean_url = image_url.replace('\\', "/").replace('\'', "\\'");
+    let init_script = format!(
+        "window.__PIN_DATA__ = {{ imageUrl: '{}' }};",
+        clean_url
+    );
+
+    #[cfg(debug_assertions)]
+    let url = WebviewUrl::External(tauri::Url::parse("http://localhost:1420/pin.html").unwrap());
+    #[cfg(not(debug_assertions))]
+    let url = WebviewUrl::App("pin.html".into());
+
+    let w = width.max(200.0).min(1920.0);
+    let h = height.max(150.0).min(1080.0);
+
+    WebviewWindowBuilder::new(&app, &label, url)
+        .title("August Pin")
+        .decorations(false)
+        .always_on_top(true)
+        .transparent(false)
+        .resizable(true)
+        .skip_taskbar(false)
+        .initialization_script(&init_script)
+        .inner_size(w, h)
+        .build()
+        .map_err(|e| AppError::Generic(format!("Failed to create pin window: {}", e)))?;
+
+    Ok(())
+}
+
 
