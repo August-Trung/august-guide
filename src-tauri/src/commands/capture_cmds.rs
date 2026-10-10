@@ -422,7 +422,7 @@ pub async fn open_pin_window(
     let orig_w = if width > 0.0 { width } else { 600.0 };
     let orig_h = if height > 0.0 { height } else { 400.0 };
 
-    let aspect = orig_w / orig_h;
+    let aspect = if orig_h > 0.0 { orig_w / orig_h } else { 1.5 };
     let mut w = orig_w;
     let mut h = orig_h;
 
@@ -435,8 +435,8 @@ pub async fn open_pin_window(
         w = h * aspect;
     }
 
-    let final_w = w.max(240.0).min(max_w);
-    let final_h = h.max(160.0).min(max_h);
+    let final_w = w.max(240.0);
+    let final_h = final_w / aspect;
 
     WebviewWindowBuilder::new(&app, &label, url)
         .title("August Pin")
