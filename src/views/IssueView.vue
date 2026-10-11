@@ -39,10 +39,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useIssueStore } from '@/stores/issueStore'
+import { useProjectStore } from '@/stores/projectStore'
 import { useI18n } from '@/composables/useI18n'
 import AppHeader from '@/components/common/AppHeader.vue'
 import IssueDetail from '@/components/dashboard/IssueDetail.vue'
@@ -52,16 +53,27 @@ const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const issueStore = useIssueStore()
+const projectStore = useProjectStore()
 const { activeIssue, isLoading, error } = storeToRefs(issueStore)
 
 const showDeleteDialog = ref(false)
 const issueToDelete = ref<string | null>(null)
+
+// If active project is changed while viewing this issue, redirect back to dashboard
+watch(() => projectStore.activeProjectId, (newProjectId) => {
+  if (activeIssue.value?.projectId && newProjectId && activeIssue.value.projectId !== newProjectId) {
+    router.push('/')
+  }
+})
 
 onMounted(async () => {
   const issueId = route.params.id as string
   if (issueId) {
     try {
       await issueStore.fetchIssue(issueId)
+      if (activeIssue.value?.projectId && activeIssue.value.projectId !== projectStore.activeProjectId) {
+        projectStore.activeProjectId = activeIssue.value.projectId
+      }
     } catch (err) {
       console.error('Failed to load issue:', err)
     }

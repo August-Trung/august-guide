@@ -64,7 +64,7 @@
         :active="proj.id === activeProjectId"
         color="primary"
         class="mb-1"
-        @click="selectProject(proj.id)"
+        @click="handleSelectProject(proj.id)"
       >
         <template v-slot:prepend>
           <v-icon size="18" :color="proj.color || 'primary'" class="mr-3">
@@ -145,15 +145,26 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useProjectStore } from '@/stores/projectStore'
 import ProjectSelector from '@/components/dashboard/ProjectSelector.vue'
 import { useI18n } from '@/composables/useI18n'
 
+const router = useRouter()
+const route = useRoute()
+
 const projectStore = useProjectStore()
 const { t } = useI18n()
 const { projects, activeProjectId, isLoading } = storeToRefs(projectStore)
 const { selectProject, createProject } = projectStore
+
+function handleSelectProject(id: string) {
+  selectProject(id)
+  if (route.path !== '/') {
+    router.push('/')
+  }
+}
 
 const showCreateDialog = ref(false)
 const isFormValid = ref(false)

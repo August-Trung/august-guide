@@ -349,7 +349,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { convertFileSrc } from '@tauri-apps/api/core'
 import {
@@ -364,6 +364,7 @@ import {
   openAppFolder,
 } from '@/services/tauriCommands'
 import { useSettingsStore } from '@/stores/settingsStore'
+import { useProjectStore } from '@/stores/projectStore'
 import { listenToEvent } from '@/services/tauriEvents'
 import AppHeader from '@/components/common/AppHeader.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
@@ -392,6 +393,14 @@ const previewImageTitle = ref<string>('')
 const currentPreviewCapture = ref<Capture | null>(null)
 
 const settingsStore = useSettingsStore()
+const projectStore = useProjectStore()
+
+// If active project is changed while viewing this session, redirect back to dashboard
+watch(() => projectStore.activeProjectId, (newProjectId) => {
+  if (session.value?.projectId && newProjectId && session.value.projectId !== newProjectId) {
+    router.push('/')
+  }
+})
 
 const showDeleteCaptureDialog = ref(false)
 const captureToDelete = ref<string | null>(null)
@@ -401,6 +410,9 @@ const loadSessionDetails = async () => {
   isLoadingSession.value = true
   try {
     session.value = await getSession(sessionId)
+    if (session.value?.projectId && session.value.projectId !== projectStore.activeProjectId) {
+      projectStore.activeProjectId = session.value.projectId
+    }
   } catch (err) {
     console.error('Failed to load session details:', err)
   } finally {

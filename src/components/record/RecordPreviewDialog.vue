@@ -19,10 +19,13 @@
       <div class="video-preview-wrapper bg-black position-relative">
         <video
           v-if="recordedUrl"
+          ref="videoRef"
           :src="recordedUrl"
           controls
-          autoplay
+          playsinline
+          preload="auto"
           class="preview-video"
+          @loadedmetadata="handleLoadedMetadata"
         ></video>
       </div>
 
@@ -85,17 +88,38 @@ import { ref, computed } from 'vue'
 import { save } from '@tauri-apps/plugin-dialog'
 import { useScreenRecorder } from '@/composables/useScreenRecorder'
 import { saveRecordingFile, openInExplorer } from '@/services/tauriCommands'
+import { useUiStore } from '@/stores/uiStore'
 
 const {
   showPreview,
   recordedUrl,
   recordedBlob,
+  currentMimeType,
   formattedDuration,
   closePreview
 } = useScreenRecorder()
 
+const uiStore = useUiStore()
+
+const videoRef = ref<HTMLVideoElement | null>(null)
 const isSaving = ref(false)
 const savedFilePath = ref<string | null>(null)
+
+// Handle Chromium WebM duration infinity bug so duration and timeline seek work accurately
+const handleLoadedMetadata = () => {
+  const vid = videoRef.value
+  if (!vid) return
+  if (vid.duration === Infinity || isNaN(vid.duration)) {
+    vid.currentTime = 1e101
+    vid.ontimeupdate = () => {
+      vid.ontimeupdate = null
+      vid.currentTime = 0
+    }
+  }
+}
+
+const isMp4 = computed(() => (currentMimeType.value || '').toLowerCase().includes('mp4'))
+const defaultExt = computed(() => isMp4.value ? 'mp4' : 'webm')
 
 const formattedFileSize = computed(() => {
   if (!recordedBlob.value) return '0 KB'
@@ -128,14 +152,22 @@ const handleSave = async () => {
     const now = new Date()
     const pad = (n: number) => n.toString().padStart(2, '0')
     const dateStr = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
-    const defaultName = `AugustGuide_Record_${dateStr}.mp4`
+    const ext = defaultExt.value
+    const defaultName = `AugustGuide_Record_${dateStr}.${ext}`
 
-    const selectedPath = await save({
+    let selectedPath = await save({
       title: 'Lưu file video ghi hình',
       defaultPath: defaultName,
-      filters: [
-        { name: 'Video file (*.mp4, *.webm)', extensions: ['mp4', 'webm'] }
-      ]
+      filters: isMp4.value
+        ? [
+            { name: 'MP4 Video (*.mp4)', extensions: ['mp4'] },
+            { name: 'All Files (*.*)', extensions: ['*'] }
+          ]
+        : [
+            { name: 'WebM Video (*.webm)', extensions: ['webm'] },
+            { name: 'MP4 Video (*.mp4)', extensions: ['mp4'] },
+            { name: 'All Files (*.*)', extensions: ['*'] }
+          ]
     })
 
     if (!selectedPath) {
@@ -143,21 +175,30 @@ const handleSave = async () => {
       return
     }
 
-    // Convert Blob to Base64
-    const reader = new FileReader()
-    const base64Promise = new Promise<string>((resolve, reject) => {
-      reader.onloadend = () => {
-        resolve(reader.result as string)
-      }
-      reader.onerror = reject
-    })
-    reader.readAsDataURL(recordedBlob.value)
-    const base64Data = await base64Promise
+    // Ensure valid video extension
+    if (!selectedPath.toLowerCase().endsWith('.mp4') && !selectedPath.toLowerCase().endsWith('.webm')) {
+      selectedPath = `${selectedPath}.${ext}`
+    }
 
-    const saved = await saveRecordingFile(selectedPath, base64Data)
+    // Save as direct binary Uint8Array for high performance & reliability
+    const arrayBuffer = await recordedBlob.value.arrayBuffer()
+    const uint8Array = new Uint8Array(arrayBuffer)
+
+    const saved = await saveRecordingFile(selectedPath, { data: uint8Array })
     savedFilePath.value = saved
-  } catch (err) {
+
+    uiStore.showToast({
+      message: `Đã lưu video thành công: ${saved}`,
+      type: 'success',
+      duration: 5000
+    })
+  } catch (err: any) {
     console.error('Failed to save screen recording:', err)
+    uiStore.showToast({
+      message: `Lỗi khi lưu video: ${err?.message || err}`,
+      type: 'error',
+      duration: 5000
+    })
   } finally {
     isSaving.value = false
   }

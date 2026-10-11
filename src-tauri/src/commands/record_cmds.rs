@@ -1,21 +1,30 @@
 use crate::error::{AppError, AppResult};
 use std::io::Write;
 
-/// Lưu dữ liệu video đã record (base64) ra đường dẫn file chỉ định trên máy tính
+/// Lưu dữ liệu video đã record (raw bytes hoặc base64) ra đường dẫn file chỉ định trên máy tính
 #[tauri::command]
-pub fn save_recording_file(file_path: String, base64_data: String) -> AppResult<String> {
+pub fn save_recording_file(
+    file_path: String,
+    data: Option<Vec<u8>>,
+    base64_data: Option<String>,
+) -> AppResult<String> {
     use base64::engine::general_purpose::STANDARD as BASE64;
     use base64::Engine;
 
-    let clean_base64 = if let Some(idx) = base64_data.find(',') {
-        &base64_data[idx + 1..]
+    let bytes = if let Some(raw) = data {
+        raw
+    } else if let Some(b64) = base64_data {
+        let clean = if let Some(idx) = b64.find(',') {
+            &b64[idx + 1..]
+        } else {
+            &b64
+        };
+        BASE64
+            .decode(clean.trim())
+            .map_err(|e| AppError::Generic(format!("Failed to decode video base64: {}", e)))?
     } else {
-        &base64_data
+        return Err(AppError::Generic("No video data provided".to_string()));
     };
-
-    let bytes = BASE64
-        .decode(clean_base64.trim())
-        .map_err(|e| AppError::Generic(format!("Failed to decode video base64: {}", e)))?;
 
     let path = std::path::PathBuf::from(&file_path);
     if let Some(parent) = path.parent() {
@@ -42,7 +51,7 @@ pub fn open_in_explorer(file_path: String) -> AppResult<()> {
         use std::process::Command;
         let clean_path = file_path.replace('/', "\\");
         let _ = Command::new("explorer")
-            .arg(format!("/select,{}", clean_path))
+            .args(["/select,", &clean_path])
             .spawn();
     }
     #[cfg(not(target_os = "windows"))]

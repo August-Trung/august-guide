@@ -7,6 +7,7 @@ const isMicEnabled = ref(true)
 const duration = ref(0)
 const recordedBlob = ref<Blob | null>(null)
 const recordedUrl = ref<string | null>(null)
+const currentMimeType = ref<string>('video/webm')
 const showPreview = ref(false)
 const errorMessage = ref<string | null>(null)
 
@@ -85,13 +86,14 @@ export function useScreenRecorder() {
         }
       }
 
-      // 4. Select supported container format
+      // 4. Select supported container format (prefer MP4 if supported by Chromium/WebView2)
       let mimeType = 'video/webm'
       const candidates = [
+        'video/mp4;codecs=avc1,mp4a.40.2',
+        'video/mp4',
         'video/webm;codecs=vp9,opus',
         'video/webm;codecs=vp8,opus',
-        'video/webm',
-        'video/mp4'
+        'video/webm'
       ]
       for (const cand of candidates) {
         if (MediaRecorder.isTypeSupported(cand)) {
@@ -99,6 +101,7 @@ export function useScreenRecorder() {
           break
         }
       }
+      currentMimeType.value = mimeType
 
       mediaRecorder = new MediaRecorder(combinedStream, {
         mimeType,
@@ -183,6 +186,9 @@ export function useScreenRecorder() {
     }
 
     if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      try {
+        mediaRecorder.requestData()
+      } catch (_) {}
       mediaRecorder.stop()
     }
 
@@ -295,6 +301,7 @@ export function useScreenRecorder() {
     formattedDuration,
     recordedBlob,
     recordedUrl,
+    currentMimeType,
     showPreview,
     errorMessage,
     startRecording,
