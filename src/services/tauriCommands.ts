@@ -167,6 +167,30 @@ export async function getCapturesBySession(sessionId: string): Promise<Capture[]
 }
 
 /**
+ * Lấy danh sách tất cả các lượt chụp (Captures) trong toàn bộ Project (Thư viện ảnh chụp).
+ */
+export async function getAllCapturesByProject(projectId: string): Promise<Capture[]> {
+  return invoke<Capture[]>('get_all_captures_by_project', { projectId })
+}
+
+/**
+ * Tạo một Session/Bài tài liệu mới từ danh sách Capture IDs được chọn trong thư viện.
+ */
+export async function createSessionFromCaptures(
+  projectId: string,
+  title: string,
+  captureIds: string[],
+  description?: string
+): Promise<Session> {
+  return invoke<Session>('create_session_from_captures', {
+    projectId,
+    title,
+    captureIds,
+    description: description || null
+  })
+}
+
+/**
  * Xóa một lượt chụp (Capture) khỏi Session.
  */
 export async function deleteCapture(id: string): Promise<void> {

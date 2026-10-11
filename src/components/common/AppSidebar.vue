@@ -1,5 +1,5 @@
 <template>
-  <v-navigation-drawer permanent border width="260" color="background">
+  <v-navigation-drawer permanent border width="270" color="background">
     <!-- Header/Logo area -->
     <div class="pa-4 d-flex align-center gap-2">
       <v-avatar size="32" color="primary" rounded>
@@ -21,9 +21,9 @@
     <!-- Navigation Views -->
     <v-list density="compact" nav class="px-2">
       <v-list-item
-        prepend-icon="mdi-view-dashboard"
-        :title="t('common.dashboard')"
-        value="dashboard"
+        prepend-icon="mdi-image-multiple"
+        title="Thư viện ảnh"
+        value="gallery"
         to="/"
         color="primary"
       ></v-list-item>
@@ -45,6 +45,55 @@
 
     <v-divider></v-divider>
 
+    <!-- Document Albums / Guides Section -->
+    <div class="px-4 py-2 d-flex align-center justify-space-between">
+      <div class="d-flex align-center gap-1">
+        <v-icon icon="mdi-book-multiple-outline" size="16" color="medium-emphasis"></v-icon>
+        <span class="text-overline text-medium-emphasis">Bộ tài liệu</span>
+      </div>
+      <v-btn
+        icon="mdi-plus"
+        variant="text"
+        size="x-small"
+        color="primary"
+        title="Tạo bộ tài liệu mới"
+        @click="showCreateSessionDialog = true"
+      ></v-btn>
+    </div>
+
+    <v-list density="compact" nav class="px-2 pt-0 albums-list">
+      <div
+        v-if="sessions.length === 0"
+        class="px-2 py-3 text-caption text-medium-emphasis text-center"
+      >
+        Chưa có bộ tài liệu nào.<br />
+        Chọn ảnh trong thư viện để tạo.
+      </div>
+      <v-list-item
+        v-for="s in sessions"
+        :key="s.id"
+        :to="'/session/' + s.id"
+        color="primary"
+        class="mb-1"
+      >
+        <template v-slot:prepend>
+          <v-icon size="18" color="primary" class="mr-2">
+            {{ s.status === 'completed' ? 'mdi-book-check-outline' : 'mdi-book-open-outline' }}
+          </v-icon>
+        </template>
+        <v-list-item-title class="font-weight-medium text-body-2 text-truncate" :title="s.title">
+          {{ s.title }}
+        </v-list-item-title>
+        <template v-slot:append>
+          <v-chip size="x-small" variant="flat" color="surface-variant" class="font-weight-bold">
+            {{ s.captureCount ?? s.issueCount ?? 0 }}
+          </v-chip>
+        </template>
+      </v-list-item>
+    </v-list>
+
+    <v-divider></v-divider>
+
     <!-- Project List in Sidebar -->
     <div class="px-4 py-2 d-flex align-center justify-space-between">
       <span class="text-overline text-medium-emphasis">{{ t('sidebar.projects') }}</span>
@@ -53,6 +102,7 @@
         variant="text"
         size="x-small"
         color="primary"
+        title="Tạo dự án mới"
         @click="showCreateDialog = true"
       ></v-btn>
     </div>
@@ -76,6 +126,62 @@
         </v-list-item-title>
       </v-list-item>
     </v-list>
+
+    <!-- Create Document Session Dialog -->
+    <v-dialog v-model="showCreateSessionDialog" max-width="500px">
+      <v-card bg-color="surface" class="pa-4">
+        <v-card-title class="text-h5 font-weight-bold px-0 text-primary d-flex align-center gap-2">
+          <v-icon icon="mdi-book-plus-outline" color="primary"></v-icon>
+          <span>Tạo bộ tài liệu mới</span>
+        </v-card-title>
+        <v-card-text class="px-0 py-4">
+          <v-form ref="sessionFormRef" v-model="isSessionFormValid" @submit.prevent="handleCreateSession">
+            <v-text-field
+              v-model="newSessionTitle"
+              label="Tên bộ tài liệu / quy trình *"
+              placeholder="Ví dụ: Quy trình bàn giao dự án..."
+              :rules="[v => !!v?.trim() || 'Vui lòng nhập tên tài liệu']"
+              variant="outlined"
+              density="comfortable"
+              class="mb-3"
+              autofocus
+              required
+            ></v-text-field>
+
+            <v-textarea
+              v-model="newSessionDesc"
+              label="Mô tả tóm tắt (tùy chọn)"
+              placeholder="Ghi chú mục đích hoặc phạm vi của tài liệu..."
+              variant="outlined"
+              density="comfortable"
+              rows="3"
+            ></v-textarea>
+          </v-form>
+        </v-card-text>
+        <v-card-actions class="px-0">
+          <v-spacer></v-spacer>
+          <v-btn
+            variant="text"
+            color="medium-emphasis"
+            class="text-none"
+            :disabled="isCreatingSession"
+            @click="closeSessionDialog"
+          >
+            Hủy
+          </v-btn>
+          <v-btn
+            variant="elevated"
+            color="primary"
+            class="text-none px-4 font-weight-bold"
+            :disabled="!isSessionFormValid || isCreatingSession"
+            :loading="isCreatingSession"
+            @click="handleCreateSession"
+          >
+            Tạo tài liệu
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
 
     <!-- Create Project Dialog -->
     <v-dialog v-model="showCreateDialog" max-width="500px">
@@ -106,7 +212,7 @@
               class="mb-3"
             ></v-textarea>
 
-            <div class="text-subtitle-2 mb-2 text-medium-emphasis">Project Color Accent</div>
+            <div class="text-subtitle-2 mb-2 text-medium-emphasis">Màu nhấn dự án</div>
             <div class="d-flex gap-2 flex-wrap mb-2">
               <v-avatar
                 v-for="color in presetColors"
@@ -144,10 +250,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useProjectStore } from '@/stores/projectStore'
+import { useSessionStore } from '@/stores/sessionStore'
 import ProjectSelector from '@/components/dashboard/ProjectSelector.vue'
 import { useI18n } from '@/composables/useI18n'
 
@@ -155,8 +262,10 @@ const router = useRouter()
 const route = useRoute()
 
 const projectStore = useProjectStore()
+const sessionStore = useSessionStore()
 const { t } = useI18n()
 const { projects, activeProjectId, isLoading } = storeToRefs(projectStore)
+const { sessions } = storeToRefs(sessionStore)
 const { selectProject, createProject } = projectStore
 
 function handleSelectProject(id: string) {
@@ -166,6 +275,57 @@ function handleSelectProject(id: string) {
   }
 }
 
+// Watch active project to reload sessions
+watch(
+  () => activeProjectId.value,
+  async (newId) => {
+    if (newId) {
+      await sessionStore.fetchSessionsByProject(newId)
+    }
+  },
+  { immediate: true }
+)
+
+onMounted(async () => {
+  if (activeProjectId.value) {
+    await sessionStore.fetchSessionsByProject(activeProjectId.value)
+  }
+})
+
+// Create Session State
+const showCreateSessionDialog = ref(false)
+const isSessionFormValid = ref(false)
+const newSessionTitle = ref('')
+const newSessionDesc = ref('')
+const isCreatingSession = ref(false)
+
+function closeSessionDialog() {
+  showCreateSessionDialog.value = false
+  newSessionTitle.value = ''
+  newSessionDesc.value = ''
+  isCreatingSession.value = false
+}
+
+async function handleCreateSession() {
+  if (!newSessionTitle.value?.trim() || !activeProjectId.value) return
+
+  isCreatingSession.value = true
+  try {
+    const created = await sessionStore.createSession({
+      projectId: activeProjectId.value,
+      title: newSessionTitle.value.trim(),
+      description: newSessionDesc.value.trim() || undefined,
+    })
+    closeSessionDialog()
+    router.push(`/session/${created.id}`)
+  } catch (err) {
+    console.error('Failed to create session:', err)
+  } finally {
+    isCreatingSession.value = false
+  }
+}
+
+// Create Project State
 const showCreateDialog = ref(false)
 const isFormValid = ref(false)
 const newProjectName = ref('')
@@ -192,7 +352,7 @@ function closeDialog() {
 
 async function handleCreate() {
   if (!newProjectName.value) return
-  
+
   try {
     await createProject({
       name: newProjectName.value,
@@ -207,11 +367,18 @@ async function handleCreate() {
 </script>
 
 <style scoped>
+.gap-1 {
+  gap: 4px;
+}
 .gap-2 {
   gap: 8px;
 }
+.albums-list {
+  max-height: 220px;
+  overflow-y: auto;
+}
 .select-project-list {
-  max-height: calc(100vh - 280px);
+  max-height: 180px;
   overflow-y: auto;
 }
 .cursor-pointer {

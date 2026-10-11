@@ -91,6 +91,8 @@ pub fn run() {
             commands::capture_cmds::delete_capture,
             commands::capture_cmds::get_capture,
             commands::capture_cmds::get_captures_by_session,
+            commands::capture_cmds::get_all_captures_by_project,
+            commands::capture_cmds::create_session_from_captures,
             commands::capture_cmds::log_from_js,
             commands::issue_cmds::save_capture_annotations,
             commands::issue_cmds::get_issues,

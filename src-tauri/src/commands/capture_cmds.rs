@@ -1,6 +1,6 @@
-use crate::db::capture_repo;
+use crate::db::{capture_repo, session_repo};
 use crate::error::{AppError, AppResult};
-use crate::models::{Capture, MonitorInfo};
+use crate::models::{Capture, MonitorInfo, Session};
 use crate::services::{file_storage, screen_capture};
 use crate::state::AppState;
 use chrono::Utc;
@@ -275,6 +275,86 @@ pub fn get_captures_by_session(
     }
 
     Ok(captures)
+}
+
+/// Lấy danh sách tất cả các lượt chụp (Captures) trong toàn bộ Project (Thư viện ảnh chụp).
+#[tauri::command]
+pub fn get_all_captures_by_project(
+    state: State<'_, AppState>,
+    project_id: String,
+) -> AppResult<Vec<Capture>> {
+    let conn = state
+        .db
+        .lock()
+        .map_err(|e| AppError::Database(e.to_string()))?;
+    let mut captures = capture_repo::get_all_captures_by_project(&conn, &project_id)?;
+
+    for capture in &mut captures {
+        let abs_path = state.app_data_dir.join(&capture.screenshot_path);
+        let annotated_rel = capture.screenshot_path.replace(".png", "_annotated.png");
+        let abs_annotated = state.app_data_dir.join(&annotated_rel);
+        if abs_annotated.exists() {
+            capture.annotated_screenshot_path = Some(abs_annotated.to_string_lossy().to_string());
+        } else {
+            capture.annotated_screenshot_path = None;
+        }
+        capture.screenshot_path = abs_path.to_string_lossy().to_string();
+    }
+
+    Ok(captures)
+}
+
+/// Tạo một Session/Bài tài liệu mới từ danh sách Capture IDs được chọn trong thư viện.
+#[tauri::command]
+pub fn create_session_from_captures(
+    state: State<'_, AppState>,
+    project_id: String,
+    title: String,
+    description: Option<String>,
+    capture_ids: Vec<String>,
+) -> AppResult<Session> {
+    let conn = state
+        .db
+        .lock()
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+    let session = session_repo::create_session(
+        &conn,
+        crate::models::CreateSessionPayload {
+            project_id,
+            title,
+            description,
+        },
+    )?;
+
+    for cap_id in capture_ids {
+        if let Ok(orig) = capture_repo::get_capture_by_id(&conn, &cap_id) {
+            let monitor_info = MonitorInfo {
+                x: orig.monitor_x,
+                y: orig.monitor_y,
+                width: orig.monitor_width,
+                height: orig.monitor_height,
+                scale_factor: orig.scale_factor,
+                name: orig.monitor_name,
+            };
+            let new_cap = capture_repo::create_capture(
+                &conn,
+                &session.id,
+                &orig.screenshot_path,
+                &monitor_info,
+                orig.window_title,
+            )?;
+
+            // Nếu capture gốc có vector annotation JSON, copy sang ID mới
+            let orig_vector = state.app_data_dir.join("screenshots").join(format!("{}_vector.json", orig.id));
+            if orig_vector.exists() {
+                let new_vector = state.app_data_dir.join("screenshots").join(format!("{}_vector.json", new_cap.id));
+                let _ = std::fs::copy(&orig_vector, &new_vector);
+            }
+        }
+    }
+
+    Ok(session)
 }
 
 /// Xóa một lượt chụp (Capture) khỏi Session (xóa file ảnh trên đĩa và soft-delete trong DB).

@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { Session, CreateSessionPayload, UpdateSessionPayload } from '@/types/session'
+import { Capture } from '@/types/capture'
 import { useUiStore } from './uiStore'
 import { useI18n } from '@/composables/useI18n'
 import {
@@ -9,6 +10,8 @@ import {
   createSession as apiCreateSession,
   updateSession as apiUpdateSession,
   deleteSession as apiDeleteSession,
+  getAllCapturesByProject,
+  createSessionFromCaptures as apiCreateSessionFromCaptures,
 } from '@/services/tauriCommands'
 
 export const useSessionStore = defineStore('session', () => {
@@ -134,15 +137,55 @@ export const useSessionStore = defineStore('session', () => {
     }
   }
 
+  const projectCaptures = ref<Capture[]>([])
+  const isLoadingCaptures = ref<boolean>(false)
+
+  async function fetchProjectCaptures(projectId: string) {
+    isLoadingCaptures.value = true
+    try {
+      projectCaptures.value = await getAllCapturesByProject(projectId)
+    } catch (err: any) {
+      console.error('Failed to load project captures:', err)
+    } finally {
+      isLoadingCaptures.value = false
+    }
+  }
+
+  async function createSessionFromSelected(
+    projectId: string,
+    title: string,
+    captureIds: string[],
+    description?: string
+  ) {
+    const uiStore = useUiStore()
+    uiStore.setLoading(true)
+    try {
+      const newSession = await apiCreateSessionFromCaptures(projectId, title, captureIds, description)
+      sessions.value.unshift(newSession)
+      uiStore.showToast({ message: `Đã tạo bộ tài liệu "${newSession.title}" từ ${captureIds.length} ảnh!`, type: 'success' })
+      return newSession
+    } catch (err: any) {
+      console.error('Failed to create session from captures:', err)
+      uiStore.showToast({ message: `Lỗi khi tạo bộ tài liệu: ${err.message || err}`, type: 'error' })
+      throw err
+    } finally {
+      uiStore.setLoading(false)
+    }
+  }
+
   return {
     sessions,
     isLoading,
     error,
     sortBy,
     sortedSessions,
+    projectCaptures,
+    isLoadingCaptures,
     fetchSessions,
     fetchSessionsByProject,
+    fetchProjectCaptures,
     createSession,
+    createSessionFromSelected,
     updateSession,
     deleteSession,
   }

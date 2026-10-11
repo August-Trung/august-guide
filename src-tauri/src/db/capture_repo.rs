@@ -71,6 +71,42 @@ pub fn get_captures_by_session(conn: &Connection, session_id: &str) -> AppResult
     Ok(captures)
 }
 
+/// Query all captures across all sessions in a specific project, ordered by created_at DESC (newest first).
+pub fn get_all_captures_by_project(conn: &Connection, project_id: &str) -> AppResult<Vec<Capture>> {
+    let mut stmt = conn.prepare(
+        "SELECT c.id, c.session_id, c.screenshot_path, c.monitor_name, c.monitor_x, c.monitor_y, c.monitor_width, c.monitor_height, c.scale_factor, c.window_title, c.created_at
+         FROM captures c
+         INNER JOIN sessions s ON c.session_id = s.id
+         WHERE s.project_id = ?1 AND c.is_deleted = 0
+         ORDER BY c.created_at DESC"
+    ).map_err(|e| AppError::Database(format!("Failed to prepare get_all_captures_by_project statement: {}", e)))?;
+
+    let iter = stmt
+        .query_map(params![project_id], |row| {
+            Ok(Capture {
+                id: row.get(0)?,
+                session_id: row.get(1)?,
+                screenshot_path: row.get(2)?,
+                annotated_screenshot_path: None,
+                monitor_name: row.get(3)?,
+                monitor_x: row.get(4)?,
+                monitor_y: row.get(5)?,
+                monitor_width: row.get(6)?,
+                monitor_height: row.get(7)?,
+                scale_factor: row.get(8)?,
+                window_title: row.get(9)?,
+                created_at: row.get(10)?,
+            })
+        })
+        .map_err(|e| AppError::Database(format!("Failed to query project captures: {}", e)))?;
+
+    let mut captures = Vec::new();
+    for c in iter {
+        captures.push(c.map_err(|e| AppError::Database(format!("Failed to map capture: {}", e)))?);
+    }
+    Ok(captures)
+}
+
 /// Create a new capture metadata record.
 pub fn create_capture(
     conn: &Connection,
