@@ -1,17 +1,19 @@
 <template>
   <div
     v-if="isRecording"
-    data-tauri-drag-region
+    ref="widgetRef"
     class="recording-hud-bar"
-    :class="{ 'is-paused': isPaused }"
+    :class="{ 'is-paused': isPaused, 'is-dragging': isDraggingActive }"
+    :style="widgetStyle"
+    @mousedown="startDrag"
   >
     <!-- Drag Grip -->
-    <div data-tauri-drag-region class="drag-handle" title="Nắm để di chuyển">
+    <div class="drag-handle" title="Nắm giữ để di chuyển thanh điều khiển">
       <v-icon icon="mdi-drag-vertical" size="18" color="medium-emphasis"></v-icon>
     </div>
 
     <!-- Status & Timer Indicator -->
-    <div data-tauri-drag-region class="d-flex align-center gap-2 px-2">
+    <div class="d-flex align-center gap-2 px-2 pointer-events-none">
       <span class="rec-dot" :class="{ 'pulsing': !isPaused }"></span>
       <span class="rec-text font-weight-black">REC</span>
       <span class="rec-timer font-weight-bold font-mono">{{ formattedDuration }}</span>
@@ -40,7 +42,7 @@
         :title="isPaused ? 'Tiếp tục ghi (F10)' : 'Tạm dừng ghi (F10)'"
       >
         <v-icon :icon="isPaused ? 'mdi-play' : 'mdi-pause'" size="18"></v-icon>
-        <v-tooltip activator="parent" location="top">
+        <v-tooltip activator="parent" location="bottom">
           {{ isPaused ? 'Tiếp tục (F10)' : 'Tạm dừng (F10)' }}
         </v-tooltip>
       </v-btn>
@@ -55,7 +57,7 @@
         :title="isMicEnabled ? 'Tắt tiếng Mic (F8)' : 'Bật tiếng Mic (F8)'"
       >
         <v-icon :icon="isMicEnabled ? 'mdi-microphone' : 'mdi-microphone-off'" size="18"></v-icon>
-        <v-tooltip activator="parent" location="top">
+        <v-tooltip activator="parent" location="bottom">
           {{ isMicEnabled ? 'Mic: Bật (F8)' : 'Mic: Tắt (F8)' }}
         </v-tooltip>
       </v-btn>
@@ -70,7 +72,7 @@
         @click.stop="stopRecording"
       >
         Dừng (F9)
-        <v-tooltip activator="parent" location="top">
+        <v-tooltip activator="parent" location="bottom">
           Hoàn thành & Lưu (F9)
         </v-tooltip>
       </v-btn>
@@ -85,7 +87,7 @@
         title="Hủy bỏ (Esc)"
       >
         <v-icon icon="mdi-close" size="18"></v-icon>
-        <v-tooltip activator="parent" location="top">
+        <v-tooltip activator="parent" location="bottom">
           Hủy bỏ không lưu (Esc)
         </v-tooltip>
       </v-btn>
@@ -94,6 +96,7 @@
 </template>
 
 <script setup lang="ts">
+import { ref, computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useScreenRecorder } from '@/composables/useScreenRecorder'
 
@@ -112,6 +115,72 @@ const {
   discardRecording
 } = recorder
 
+// Dragging logic
+const widgetRef = ref<HTMLElement | null>(null)
+const position = ref<{ x: number | null; y: number | null }>({ x: null, y: null })
+const isDraggingActive = ref(false)
+
+let startMouseX = 0
+let startMouseY = 0
+let startElemX = 0
+let startElemY = 0
+
+const startDrag = (e: MouseEvent) => {
+  // Prevent drag when clicking buttons
+  if ((e.target as HTMLElement)?.closest('button')) return
+
+  isDraggingActive.value = true
+  startMouseX = e.clientX
+  startMouseY = e.clientY
+
+  if (widgetRef.value) {
+    const rect = widgetRef.value.getBoundingClientRect()
+    startElemX = rect.left
+    startElemY = rect.top
+  }
+
+  window.addEventListener('mousemove', onDrag)
+  window.addEventListener('mouseup', stopDrag)
+}
+
+const onDrag = (e: MouseEvent) => {
+  if (!isDraggingActive.value) return
+  const dx = e.clientX - startMouseX
+  const dy = e.clientY - startMouseY
+
+  const elemWidth = widgetRef.value?.offsetWidth ?? 280
+  const elemHeight = widgetRef.value?.offsetHeight ?? 48
+
+  const newLeft = Math.max(10, Math.min(window.innerWidth - elemWidth - 10, startElemX + dx))
+  const newTop = Math.max(10, Math.min(window.innerHeight - elemHeight - 10, startElemY + dy))
+
+  position.value = { x: newLeft, y: newTop }
+}
+
+const stopDrag = () => {
+  isDraggingActive.value = false
+  window.removeEventListener('mousemove', onDrag)
+  window.removeEventListener('mouseup', stopDrag)
+}
+
+const widgetStyle = computed(() => {
+  if (position.value.x !== null && position.value.y !== null) {
+    return {
+      left: `${position.value.x}px`,
+      top: `${position.value.y}px`,
+      bottom: 'auto',
+      transform: 'none'
+    }
+  }
+  // Default: positioned at top center (Dynamic Island) away from Chromium bottom banner
+  return {
+    top: '24px',
+    bottom: 'auto',
+    left: '50%',
+    transform: 'translateX(-50%)'
+  }
+})
+
 const confirmDiscard = () => {
   if (confirm('Bạn có chắc chắn muốn hủy bỏ bản quay này không? Dữ liệu chưa lưu sẽ bị xóa.')) {
     discardRecording()
@@ -122,9 +191,6 @@ const confirmDiscard = () => {
 <style scoped>
 .recording-hud-bar {
   position: fixed;
-  bottom: 30px;
-  left: 50%;
-  transform: translateX(-50%);
   z-index: 999999;
   display: flex;
   align-items: center;
@@ -139,8 +205,9 @@ const confirmDiscard = () => {
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.recording-hud-bar:active {
+.recording-hud-bar.is-dragging {
   cursor: grabbing;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.8), 0 0 20px rgba(56, 189, 248, 0.4);
 }
 
 .recording-hud-bar.is-paused {
@@ -152,6 +219,10 @@ const confirmDiscard = () => {
   display: flex;
   align-items: center;
   cursor: grab;
+}
+
+.pointer-events-none {
+  pointer-events: none;
 }
 
 .rec-dot {

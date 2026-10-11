@@ -74,44 +74,15 @@
     </div>
 
     <!-- Hotkey hint / Action area -->
+    <!-- Hotkey hint area -->
     <div class="d-flex align-center gap-3">
-      <v-btn
-        icon="mdi-folder-image"
-        variant="tonal"
-        size="small"
-        color="secondary"
-        class="rounded"
-        :title="t('header.openFolder', 'Mở thư mục lưu ảnh')"
-        @click="handleOpenFolder"
-      ></v-btn>
-
-      <v-btn
-        color="primary"
-        prepend-icon="mdi-camera"
-        variant="elevated"
-        size="small"
-        class="text-none font-weight-bold"
-        @click="handleManualCapture"
-      >
-        {{ t('header.captureNow', 'Chụp màn hình') }}
-      </v-btn>
-
-      <v-btn
-        color="error"
-        prepend-icon="mdi-record-rec"
-        variant="tonal"
-        size="small"
-        class="text-none font-weight-bold"
-        title="Quay video toàn màn hình (F9)"
-        @click="handleToggleRecord"
-      >
-        {{ isRecording ? 'Dừng quay (F9)' : 'Quay video (F9)' }}
-      </v-btn>
-
       <div class="d-flex align-center text-caption text-medium-emphasis bg-surface px-3 py-1 rounded border">
         <v-icon size="14" class="mr-1" color="primary">mdi-keyboard</v-icon>
         <span class="mr-1">{{ t('header.triggerCapture') }}</span>
         <kbd class="kbd-key mr-1">{{ t('header.middleClick') }}</kbd> {{ t('header.or') }} <kbd class="kbd-key ml-1">Ctrl + Shift + M</kbd>
+        <span class="mx-2">•</span>
+        <span class="mr-1">Quay:</span>
+        <kbd class="kbd-key">F9</kbd>
       </div>
     </div>
   </v-sheet>
@@ -123,10 +94,8 @@ import { storeToRefs } from 'pinia'
 import { useProjectStore } from '@/stores/projectStore'
 import { useSessionStore } from '@/stores/sessionStore'
 import { useRouter } from 'vue-router'
-import { searchAll, openAppFolder } from '@/services/tauriCommands'
+import { searchAll } from '@/services/tauriCommands'
 import { useI18n } from '@/composables/useI18n'
-import { startCaptureWorkflow } from '@/composables/useTauriEvents'
-import { useScreenRecorder } from '@/composables/useScreenRecorder'
 
 interface SearchItem {
   id: string
@@ -142,18 +111,6 @@ const { t } = useI18n()
 
 const sessionStore = useSessionStore()
 const { sessions } = storeToRefs(sessionStore)
-
-async function handleManualCapture() {
-  await startCaptureWorkflow(projectStore, sessionStore)
-}
-
-async function handleOpenFolder() {
-  try {
-    await openAppFolder('screenshots')
-  } catch (e) {
-    console.error('Failed to open screenshots folder:', e)
-  }
-}
 
 const router = useRouter()
 const searchQuery = ref('')
@@ -243,13 +200,6 @@ watch(selectedItem, (item) => {
 const activeSessionsCount = computed(() => {
   return sessions.value.filter(s => s.status === 'active').length
 })
-
-const recorder = useScreenRecorder()
-const { isRecording } = storeToRefs(recorder)
-
-const handleToggleRecord = () => {
-  recorder.toggleRecording()
-}
 </script>
 
 <style scoped>
