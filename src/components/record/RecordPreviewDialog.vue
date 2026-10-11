@@ -36,6 +36,16 @@
           <div class="text-caption text-medium-emphasis mb-4" style="max-width: 460px; margin: 0 auto;">
             Dữ liệu video đã được ghi đầy đủ. Vui lòng bấm nút <strong>"Lưu video ra máy tính"</strong> bên dưới để mở xem bằng Windows Media Player hoặc trình phát video của máy.
           </div>
+          <v-btn
+            size="small"
+            variant="outlined"
+            color="primary"
+            class="text-none"
+            prepend-icon="mdi-refresh"
+            @click="retryPreview"
+          >
+            Thử tải lại xem trước
+          </v-btn>
         </div>
       </div>
 
@@ -128,8 +138,18 @@ watch(recordedUrl, (newUrl) => {
 })
 
 const handleVideoError = (e: Event) => {
-  console.warn('[RecordPreviewDialog] Video preview element error:', e)
+  const vid = videoRef.value
+  console.warn('[RecordPreviewDialog] Video preview element error:', e, 'Code:', vid?.error?.code, 'Msg:', vid?.error?.message)
   videoError.value = true
+}
+
+const retryPreview = () => {
+  videoError.value = false
+  if (videoRef.value && recordedUrl.value) {
+    videoRef.value.src = recordedUrl.value
+    videoRef.value.load()
+    videoRef.value.play().catch(() => {})
+  }
 }
 
 const isMp4 = computed(() => (currentMimeType.value || '').toLowerCase().includes('mp4'))
