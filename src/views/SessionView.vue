@@ -92,7 +92,7 @@
         <v-divider class="mb-6"></v-divider>
 
         <!-- Guide Steps List Header -->
-        <div class="d-flex align-center justify-space-between mb-4 flex-wrap gap-2">
+        <div class="d-flex align-center justify-space-between mb-4 flex-wrap gap-3">
           <div class="d-flex align-center gap-2">
             <v-icon icon="mdi-image-multiple-outline" color="primary" size="24"></v-icon>
             <span class="text-h6 font-weight-bold text-white">
@@ -102,9 +102,26 @@
               {{ captures.length }} ảnh
             </v-chip>
           </div>
-          <span class="text-caption text-medium-emphasis">
-            Nhấp vào ảnh để phóng to • Bấm "Sửa nét vẽ" để vẽ thêm hoặc sửa ghi chú
-          </span>
+
+          <div class="d-flex align-center gap-3 flex-wrap">
+            <span class="text-caption text-medium-emphasis d-none d-md-inline">
+              Nhấp vào ảnh để phóng to • Bấm "Sửa nét vẽ" để vẽ thêm hoặc sửa ghi chú
+            </span>
+            <div style="min-width: 175px;">
+              <v-select
+                v-model="sortBy"
+                :items="sortOptions"
+                item-title="title"
+                item-value="value"
+                density="compact"
+                hide-details
+                variant="solo-filled"
+                flat
+                bg-color="surface-variant"
+                prepend-inner-icon="mdi-sort"
+              ></v-select>
+            </div>
+          </div>
         </div>
 
         <!-- Captures Grid -->
@@ -132,7 +149,7 @@
 
         <v-row v-else class="gy-4">
           <v-col
-            v-for="(cap, index) in captures"
+            v-for="cap in sortedCaptures"
             :key="cap.id"
             cols="12"
             sm="6"
@@ -167,7 +184,7 @@
                   class="position-absolute font-weight-bold elevation-2"
                   style="top: 10px; left: 10px; z-index: 2;"
                 >
-                  Ảnh {{ index + 1 }}
+                  Ảnh {{ getStepNumber(cap.id) }}
                 </v-chip>
 
                 <!-- Quick Pin to Screen Button -->
@@ -185,8 +202,8 @@
 
               <!-- Card Body -->
               <v-card-item class="pa-3 flex-grow-1">
-                <div class="text-subtitle-2 font-weight-bold text-truncate text-white mb-1" :title="cap.windowTitle || ('Ảnh ' + (index + 1))">
-                  {{ cap.windowTitle || ('Ảnh ' + (index + 1)) }}
+                <div class="text-subtitle-2 font-weight-bold text-truncate text-white mb-1" :title="cap.windowTitle || ('Ảnh ' + getStepNumber(cap.id))">
+                  {{ cap.windowTitle || ('Ảnh ' + getStepNumber(cap.id)) }}
                 </div>
                 <div class="text-caption text-medium-emphasis">
                   {{ formatDate(cap.createdAt) }} • {{ cap.monitorWidth }}×{{ cap.monitorHeight }}
@@ -382,6 +399,34 @@ const sessionId = route.params.id as string
 
 const session = ref<Session | null>(null)
 const captures = ref<Capture[]>([])
+const sortBy = ref<'newest' | 'oldest'>('newest')
+
+const sortOptions = [
+  { title: 'Mới nhất trước', value: 'newest' },
+  { title: 'Cũ nhất trước (Bước 1 → N)', value: 'oldest' },
+]
+
+// Map capture ID to original 1-based chronological step number
+const stepNumberMap = computed(() => {
+  const map = new Map<string, number>()
+  captures.value.forEach((cap, index) => {
+    map.set(cap.id, index + 1)
+  })
+  return map
+})
+
+const getStepNumber = (capId: string) => {
+  return stepNumberMap.value.get(capId) ?? 1
+}
+
+const sortedCaptures = computed(() => {
+  const list = [...captures.value]
+  if (sortBy.value === 'newest') {
+    return list.reverse()
+  }
+  return list
+})
+
 const isLoadingSession = ref(true)
 const isLoadingCaptures = ref(false)
 const isCapturing = ref(false)
