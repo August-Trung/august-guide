@@ -94,18 +94,23 @@
 </template>
 
 <script setup lang="ts">
+import { storeToRefs } from 'pinia'
 import { useScreenRecorder } from '@/composables/useScreenRecorder'
 
+const recorder = useScreenRecorder()
 const {
   isRecording,
   isPaused,
   isMicEnabled,
-  formattedDuration,
+  formattedDuration
+} = storeToRefs(recorder)
+
+const {
   togglePause,
   toggleMic,
   stopRecording,
   discardRecording
-} = useScreenRecorder()
+} = recorder
 
 const confirmDiscard = () => {
   if (confirm('Bạn có chắc chắn muốn hủy bỏ bản quay này không? Dữ liệu chưa lưu sẽ bị xóa.')) {

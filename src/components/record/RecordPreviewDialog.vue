@@ -25,8 +25,18 @@
           playsinline
           preload="auto"
           class="preview-video"
-          @loadedmetadata="handleLoadedMetadata"
+          @error="handleVideoError"
         ></video>
+
+        <div v-if="videoError" class="video-error-overlay pa-6 text-center">
+          <v-icon icon="mdi-alert-circle-outline" color="warning" size="48" class="mb-2"></v-icon>
+          <div class="text-subtitle-1 font-weight-bold text-white mb-1">
+            Không thể xem trước trực tiếp trên ứng dụng
+          </div>
+          <div class="text-caption text-medium-emphasis mb-4" style="max-width: 460px; margin: 0 auto;">
+            Dữ liệu video đã được ghi đầy đủ. Vui lòng bấm nút <strong>"Lưu video ra máy tính"</strong> bên dưới để mở xem bằng Windows Media Player hoặc trình phát video của máy.
+          </div>
+        </div>
       </div>
 
       <!-- Info Meta Bar -->
@@ -84,38 +94,42 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
+import { storeToRefs } from 'pinia'
 import { save } from '@tauri-apps/plugin-dialog'
 import { useScreenRecorder } from '@/composables/useScreenRecorder'
 import { saveRecordingFile, openInExplorer } from '@/services/tauriCommands'
 import { useUiStore } from '@/stores/uiStore'
 
+const recorder = useScreenRecorder()
 const {
   showPreview,
   recordedUrl,
   recordedBlob,
   currentMimeType,
-  formattedDuration,
-  closePreview
-} = useScreenRecorder()
+  formattedDuration
+} = storeToRefs(recorder)
+
+const { closePreview } = recorder
 
 const uiStore = useUiStore()
 
 const videoRef = ref<HTMLVideoElement | null>(null)
 const isSaving = ref(false)
 const savedFilePath = ref<string | null>(null)
+const videoError = ref(false)
 
-// Handle Chromium WebM duration infinity bug so duration and timeline seek work accurately
-const handleLoadedMetadata = () => {
-  const vid = videoRef.value
-  if (!vid) return
-  if (vid.duration === Infinity || isNaN(vid.duration)) {
-    vid.currentTime = 1e101
-    vid.ontimeupdate = () => {
-      vid.ontimeupdate = null
-      vid.currentTime = 0
-    }
+watch(recordedUrl, (newUrl) => {
+  videoError.value = false
+  if (newUrl && videoRef.value) {
+    videoRef.value.currentTime = 0
+    videoRef.value.load()
   }
+})
+
+const handleVideoError = (e: Event) => {
+  console.warn('[RecordPreviewDialog] Video preview element error:', e)
+  videoError.value = true
 }
 
 const isMp4 = computed(() => (currentMimeType.value || '').toLowerCase().includes('mp4'))
@@ -130,17 +144,31 @@ const formattedFileSize = computed(() => {
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
 })
 
+const togglePlayback = () => {
+  const vid = videoRef.value
+  if (!vid) return
+  if (vid.paused) {
+    vid.play().catch(() => {})
+  } else {
+    vid.pause()
+  }
+}
+
 const handleKeyDown = (e: KeyboardEvent) => {
   if (e.ctrlKey && e.key.toLowerCase() === 's') {
     e.preventDefault()
     handleSave()
   } else if (e.key === 'Escape') {
     handleClose()
+  } else if (e.code === 'Space' && (e.target as HTMLElement)?.tagName !== 'BUTTON') {
+    e.preventDefault()
+    togglePlayback()
   }
 }
 
 const handleClose = () => {
   savedFilePath.value = null
+  videoError.value = false
   closePreview()
 }
 
@@ -218,16 +246,32 @@ const handleOpenFolder = async () => {
 .video-preview-wrapper {
   width: 100%;
   max-height: 480px;
+  min-height: 300px;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  background-color: #000;
 }
 
 .preview-video {
   width: 100%;
   max-height: 480px;
   outline: none;
+}
+
+.video-error-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.95);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
 }
 
 .border-bottom {

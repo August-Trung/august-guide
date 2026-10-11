@@ -244,14 +244,11 @@ const activeSessionsCount = computed(() => {
   return sessions.value.filter(s => s.status === 'active').length
 })
 
-const { isRecording, startRecording, stopRecording } = useScreenRecorder()
+const recorder = useScreenRecorder()
+const { isRecording } = storeToRefs(recorder)
 
 const handleToggleRecord = () => {
-  if (isRecording.value) {
-    stopRecording()
-  } else {
-    startRecording()
-  }
+  recorder.toggleRecording()
 }
 </script>
 

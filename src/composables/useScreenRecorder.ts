@@ -1,26 +1,28 @@
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
 import { listenToEvent } from '@/services/tauriEvents'
 
-const isRecording = ref(false)
-const isPaused = ref(false)
-const isMicEnabled = ref(true)
-const duration = ref(0)
-const recordedBlob = ref<Blob | null>(null)
-const recordedUrl = ref<string | null>(null)
-const currentMimeType = ref<string>('video/webm')
-const showPreview = ref(false)
-const errorMessage = ref<string | null>(null)
+export const useScreenRecorderStore = defineStore('screenRecorder', () => {
+  const isRecording = ref(false)
+  const isPaused = ref(false)
+  const isMicEnabled = ref(true)
+  const duration = ref(0)
+  const recordedBlob = ref<Blob | null>(null)
+  const recordedUrl = ref<string | null>(null)
+  const currentMimeType = ref<string>('video/webm')
+  const showPreview = ref(false)
+  const errorMessage = ref<string | null>(null)
 
-let screenStream: MediaStream | null = null
-let micStream: MediaStream | null = null
-let mediaRecorder: MediaRecorder | null = null
-let recordedChunks: BlobPart[] = []
-let timerInterval: ReturnType<typeof setInterval> | null = null
-let unlistenToggle: (() => void) | null = null
-let unlistenPauseResume: (() => void) | null = null
-let unlistenToggleMic: (() => void) | null = null
+  let screenStream: MediaStream | null = null
+  let micStream: MediaStream | null = null
+  let mediaRecorder: MediaRecorder | null = null
+  let recordedChunks: BlobPart[] = []
+  let timerInterval: ReturnType<typeof setInterval> | null = null
 
-export function useScreenRecorder() {
+  // Guard locks to prevent double-trigger race conditions
+  let isTransitioning = false
+  let lastToggleTime = 0
+
   const formattedDuration = computed(() => {
     const totalSecs = duration.value
     const mins = Math.floor(totalSecs / 60)
@@ -86,14 +88,13 @@ export function useScreenRecorder() {
         }
       }
 
-      // 4. Select supported container format (prefer MP4 if supported by Chromium/WebView2)
+      // 4. Select supported container format
       let mimeType = 'video/webm'
       const candidates = [
-        'video/mp4;codecs=avc1,mp4a.40.2',
-        'video/mp4',
         'video/webm;codecs=vp9,opus',
         'video/webm;codecs=vp8,opus',
-        'video/webm'
+        'video/webm',
+        'video/mp4'
       ]
       for (const cand of candidates) {
         if (MediaRecorder.isTypeSupported(cand)) {
@@ -115,7 +116,9 @@ export function useScreenRecorder() {
       }
 
       mediaRecorder.onstop = () => {
-        const blob = new Blob(recordedChunks, { type: mimeType })
+        const actualMime = mediaRecorder?.mimeType || mimeType
+        currentMimeType.value = actualMime
+        const blob = new Blob(recordedChunks, { type: actualMime })
         recordedBlob.value = blob
         recordedUrl.value = URL.createObjectURL(blob)
         showPreview.value = true
@@ -185,15 +188,42 @@ export function useScreenRecorder() {
       timerInterval = null
     }
 
+    isRecording.value = false
+    isPaused.value = false
+
     if (mediaRecorder && mediaRecorder.state !== 'inactive') {
       try {
         mediaRecorder.requestData()
       } catch (_) {}
       mediaRecorder.stop()
     }
+  }
 
-    isRecording.value = false
-    isPaused.value = false
+  const toggleRecording = async () => {
+    const now = Date.now()
+    if (now - lastToggleTime < 1000 || isTransitioning) {
+      console.log('[ScreenRecorder] Ignored duplicate toggle within debounce window')
+      return
+    }
+    lastToggleTime = now
+    isTransitioning = true
+
+    try {
+      if (isRecording.value) {
+        await stopRecording()
+      } else {
+        // Do not allow starting a new recording if preview dialog is currently open
+        if (showPreview.value) {
+          console.log('[ScreenRecorder] Cannot start recording while preview dialog is open')
+          return
+        }
+        await startRecording()
+      }
+    } finally {
+      setTimeout(() => {
+        isTransitioning = false
+      }, 500)
+    }
   }
 
   const discardRecording = () => {
@@ -235,64 +265,6 @@ export function useScreenRecorder() {
     recordedBlob.value = null
   }
 
-  const initGlobalHotkeys = async () => {
-    try {
-      unlistenToggle = await listenToEvent('record:toggle', () => {
-        if (isRecording.value) {
-          stopRecording()
-        } else {
-          startRecording()
-        }
-      })
-
-      unlistenPauseResume = await listenToEvent('record:pause_resume', () => {
-        if (isRecording.value) {
-          togglePause()
-        }
-      })
-
-      unlistenToggleMic = await listenToEvent('record:toggle_mic', () => {
-        toggleMic()
-      })
-    } catch (err) {
-      console.warn('[ScreenRecorder] Global hotkey registration warning:', err)
-    }
-  }
-
-  const handleGlobalKeyDown = (e: KeyboardEvent) => {
-    if (e.key === 'F9') {
-      e.preventDefault()
-      if (isRecording.value) {
-        stopRecording()
-      } else {
-        startRecording()
-      }
-    } else if (e.key === 'F10') {
-      e.preventDefault()
-      if (isRecording.value) {
-        togglePause()
-      }
-    } else if (e.key === 'F8') {
-      e.preventDefault()
-      toggleMic()
-    } else if (e.key === 'Escape' && isRecording.value) {
-      e.preventDefault()
-      discardRecording()
-    }
-  }
-
-  onMounted(() => {
-    window.addEventListener('keydown', handleGlobalKeyDown)
-    initGlobalHotkeys()
-  })
-
-  onUnmounted(() => {
-    window.removeEventListener('keydown', handleGlobalKeyDown)
-    unlistenToggle?.()
-    unlistenPauseResume?.()
-    unlistenToggleMic?.()
-  })
-
   return {
     isRecording,
     isPaused,
@@ -310,7 +282,49 @@ export function useScreenRecorder() {
     togglePause,
     toggleMic,
     stopRecording,
+    toggleRecording,
     discardRecording,
     closePreview
   }
+})
+
+let areHotkeysInitialized = false
+
+function initGlobalListeners(store: ReturnType<typeof useScreenRecorderStore>) {
+  if (areHotkeysInitialized) return
+  areHotkeysInitialized = true
+
+  listenToEvent('record:toggle', () => {
+    store.toggleRecording()
+  }).catch(err => console.warn('[ScreenRecorder] Tauri toggle listener warning:', err))
+
+  listenToEvent('record:pause_resume', () => {
+    store.togglePause()
+  }).catch(err => console.warn('[ScreenRecorder] Tauri pause listener warning:', err))
+
+  listenToEvent('record:toggle_mic', () => {
+    store.toggleMic()
+  }).catch(err => console.warn('[ScreenRecorder] Tauri mic listener warning:', err))
+
+  window.addEventListener('keydown', (e: KeyboardEvent) => {
+    if (e.key === 'F9') {
+      e.preventDefault()
+      store.toggleRecording()
+    } else if (e.key === 'F10') {
+      e.preventDefault()
+      store.togglePause()
+    } else if (e.key === 'F8') {
+      e.preventDefault()
+      store.toggleMic()
+    } else if (e.key === 'Escape' && store.isRecording) {
+      e.preventDefault()
+      store.discardRecording()
+    }
+  })
+}
+
+export function useScreenRecorder() {
+  const store = useScreenRecorderStore()
+  initGlobalListeners(store)
+  return store
 }
