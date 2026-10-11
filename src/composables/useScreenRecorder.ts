@@ -89,13 +89,9 @@ export const useScreenRecorderStore = defineStore('screenRecorder', () => {
         }
       }
 
-      // 4. Select supported container format (prioritize MP4 H.264/AAC if supported by browser)
-      let mimeType = 'video/mp4'
+      // 4. Select supported container format (use WebM for browser recording to ensure 100% preview playback compatibility)
+      let mimeType = 'video/webm'
       const candidates = [
-        'video/mp4;codecs=avc1,mp4a.40.2',
-        'video/mp4;codecs=avc1,opus',
-        'video/mp4;codecs=avc1',
-        'video/mp4',
         'video/webm;codecs=vp9,opus',
         'video/webm;codecs=vp8,opus',
         'video/webm'
@@ -116,7 +112,7 @@ export const useScreenRecorderStore = defineStore('screenRecorder', () => {
       })
 
       mediaRecorder.ondataavailable = (e: BlobEvent) => {
-        if (e.data && e.data.size > 0) {
+        if (e.data?.size) {
           recordedChunks.push(e.data)
         }
       }
