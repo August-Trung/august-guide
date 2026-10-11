@@ -240,35 +240,60 @@
     </div>
 
     <!-- Image Preview Modal -->
-    <v-dialog v-model="showPreviewDialog" max-width="90vw">
-      <v-card bg-color="surface" class="pa-0 overflow-hidden">
-        <v-card-title class="d-flex align-center justify-space-between pa-4 bg-surface-variant">
-          <div class="text-subtitle-1 font-weight-bold text-white text-truncate mr-4">
-            {{ previewImageTitle }}
+    <v-dialog
+      v-model="showPreviewDialog"
+      width="1150"
+      max-width="95vw"
+    >
+      <v-card bg-color="surface" class="preview-dialog-card pa-0 overflow-hidden">
+        <!-- Header -->
+        <v-card-title class="d-flex align-center justify-space-between py-3 px-5 bg-surface-variant border-b">
+          <div class="d-flex align-center gap-2 mr-4" style="min-width: 0; flex: 1;">
+            <v-icon icon="mdi-image-outline" color="primary" size="22"></v-icon>
+            <span class="text-subtitle-1 font-weight-bold text-white text-truncate" :title="previewImageTitle">
+              {{ previewImageTitle }}
+            </span>
+            <v-chip
+              v-if="currentPreviewCapture"
+              size="x-small"
+              variant="tonal"
+              color="primary"
+              class="font-weight-medium flex-shrink-0"
+            >
+              {{ currentPreviewCapture.monitorWidth }}×{{ currentPreviewCapture.monitorHeight }}
+            </v-chip>
           </div>
-          <div class="d-flex align-center gap-2">
+
+          <!-- Actions -->
+          <div class="d-flex align-center gap-2 flex-shrink-0">
+            <!-- Edit Markup -->
             <v-btn
               v-if="currentPreviewCapture"
-              variant="tonal"
+              variant="elevated"
               color="primary"
               size="small"
               prepend-icon="mdi-pencil"
-              class="text-none"
-              @click="currentPreviewCapture && handleReEditCapture(currentPreviewCapture)"
+              class="text-none font-weight-bold shadow-sm"
+              @click="triggerEditFromPreview"
             >
               Sửa nét vẽ
             </v-btn>
+
+            <!-- Pin to screen -->
             <v-btn
               v-if="currentPreviewCapture"
               variant="tonal"
-              color="secondary"
+              color="surface-variant"
               size="small"
               prepend-icon="mdi-pin-outline"
-              class="text-none"
+              class="text-none font-weight-medium"
+              title="Ghim ảnh nổi trên các cửa sổ khác"
               @click="currentPreviewCapture && handlePinCapture(currentPreviewCapture)"
             >
               Ghim nổi
             </v-btn>
+
+            <!-- Close -->
             <v-btn
               icon="mdi-close"
               variant="text"
@@ -278,12 +303,16 @@
             ></v-btn>
           </div>
         </v-card-title>
-        <v-card-text class="pa-0 text-center bg-black d-flex align-center justify-center" style="max-height: 80vh; overflow: auto;">
+
+        <!-- Image Viewer Content -->
+        <v-card-text
+          class="pa-4 text-center d-flex align-center justify-center overflow-auto preview-image-container"
+        >
           <img
             v-if="previewImageUrl"
             :src="previewImageUrl"
-            class="img-fluid"
-            style="max-width: 100%; max-height: 80vh; object-fit: contain;"
+            class="preview-large-image"
+            alt="Preview"
           />
         </v-card-text>
       </v-card>
@@ -501,6 +530,13 @@ async function handleReEditCapture(cap: Capture) {
   }
 }
 
+function triggerEditFromPreview() {
+  if (currentPreviewCapture.value) {
+    handleReEditCapture(currentPreviewCapture.value)
+    showPreviewDialog.value = false
+  }
+}
+
 // Single Delete Confirmation
 const showDeleteDialog = ref(false)
 const captureToDelete = ref<Capture | null>(null)
@@ -557,5 +593,28 @@ function executeDeleteSingle() {
 
 .max-w-md {
   max-width: 450px;
+}
+
+.preview-dialog-card {
+  width: 100%;
+  min-width: 500px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.8) !important;
+}
+
+.preview-image-container {
+  height: 75vh;
+  min-height: 480px;
+  max-height: 82vh;
+  background: #07090e;
+}
+
+.preview-large-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 6px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
 }
 </style>

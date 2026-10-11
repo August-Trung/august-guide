@@ -318,19 +318,33 @@
     </v-snackbar>
 
     <!-- Fullscreen Image Preview Dialog -->
-    <v-dialog v-model="showPreviewDialog" max-width="1100">
-      <v-card border color="surface">
-        <v-card-title class="d-flex align-center justify-space-between py-3 px-6 border-b">
-          <span class="text-subtitle-1 font-weight-bold text-white">{{ previewImageTitle }}</span>
-          <div class="d-flex align-center gap-2">
+    <v-dialog v-model="showPreviewDialog" width="1150" max-width="95vw">
+      <v-card border color="surface" class="preview-dialog-card pa-0 overflow-hidden">
+        <v-card-title class="d-flex align-center justify-space-between py-3 px-6 border-b bg-surface-variant">
+          <div class="d-flex align-center gap-2 mr-4" style="min-width: 0; flex: 1;">
+            <v-icon icon="mdi-image-outline" color="primary" size="22"></v-icon>
+            <span class="text-subtitle-1 font-weight-bold text-white text-truncate" :title="previewImageTitle">
+              {{ previewImageTitle }}
+            </span>
+            <v-chip
+              v-if="currentPreviewCapture"
+              size="x-small"
+              variant="tonal"
+              color="primary"
+              class="font-weight-medium flex-shrink-0"
+            >
+              {{ currentPreviewCapture.monitorWidth }}×{{ currentPreviewCapture.monitorHeight }}
+            </v-chip>
+          </div>
+          <div class="d-flex align-center gap-2 flex-shrink-0">
             <v-btn
               v-if="currentPreviewCapture"
-              variant="tonal"
+              variant="elevated"
               size="small"
               color="primary"
               prepend-icon="mdi-pencil"
               class="text-none mr-1 font-weight-bold"
-              @click="handleReEditCapture(currentPreviewCapture)"
+              @click="triggerEditFromPreview"
             >
               Sửa nét vẽ
             </v-btn>
@@ -352,12 +366,12 @@
             <v-btn icon="mdi-close" variant="text" density="comfortable" @click="showPreviewDialog = false"></v-btn>
           </div>
         </v-card-title>
-        <v-card-text class="pa-4 text-center bg-black d-flex align-center justify-center" style="max-height: 80vh; overflow: auto;">
+        <v-card-text class="pa-4 text-center d-flex align-center justify-center overflow-auto preview-image-container">
           <img
             v-if="previewImageUrl"
             :src="previewImageUrl"
             alt="Preview"
-            style="max-width: 100%; max-height: 75vh; object-fit: contain; border-radius: 4px;"
+            class="preview-large-image"
           />
         </v-card-text>
       </v-card>
@@ -549,6 +563,13 @@ const handleReEditCapture = async (cap: Capture) => {
   }
 }
 
+const triggerEditFromPreview = () => {
+  if (currentPreviewCapture.value) {
+    handleReEditCapture(currentPreviewCapture.value)
+    showPreviewDialog.value = false
+  }
+}
+
 const promptDeleteCapture = (id: string) => {
   captureToDelete.value = id
   showDeleteCaptureDialog.value = true
@@ -638,5 +659,28 @@ const statusColor = computed(() => {
 .capture-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
+}
+
+.preview-dialog-card {
+  width: 100%;
+  min-width: 500px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.8) !important;
+}
+
+.preview-image-container {
+  height: 75vh;
+  min-height: 480px;
+  max-height: 82vh;
+  background: #07090e;
+}
+
+.preview-large-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 6px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
 }
 </style>
