@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { listenToEvent } from '@/services/tauriEvents'
+import fixWebmDuration from 'fix-webm-duration'
 
 export const useScreenRecorderStore = defineStore('screenRecorder', () => {
   const isRecording = ref(false)
@@ -88,20 +89,25 @@ export const useScreenRecorderStore = defineStore('screenRecorder', () => {
         }
       }
 
-      // 4. Select supported container format
-      let mimeType = 'video/webm'
+      // 4. Select supported container format (prioritize MP4 H.264/AAC if supported by browser)
+      let mimeType = 'video/mp4'
       const candidates = [
+        'video/mp4;codecs=avc1,mp4a.40.2',
+        'video/mp4;codecs=avc1,opus',
+        'video/mp4;codecs=avc1',
+        'video/mp4',
         'video/webm;codecs=vp9,opus',
         'video/webm;codecs=vp8,opus',
-        'video/webm',
-        'video/mp4'
+        'video/webm'
       ]
+      let selectedMime = ''
       for (const cand of candidates) {
         if (MediaRecorder.isTypeSupported(cand)) {
-          mimeType = cand
+          selectedMime = cand
           break
         }
       }
+      mimeType = selectedMime || 'video/webm'
       currentMimeType.value = mimeType
 
       mediaRecorder = new MediaRecorder(combinedStream, {
@@ -115,12 +121,23 @@ export const useScreenRecorderStore = defineStore('screenRecorder', () => {
         }
       }
 
-      mediaRecorder.onstop = () => {
+      mediaRecorder.onstop = async () => {
         const actualMime = mediaRecorder?.mimeType || mimeType
         currentMimeType.value = actualMime
-        const blob = new Blob(recordedChunks, { type: actualMime })
-        recordedBlob.value = blob
-        recordedUrl.value = URL.createObjectURL(blob)
+        let finalBlob = new Blob(recordedChunks, { type: actualMime })
+
+        // If WebM format, patch missing EBML duration metadata so the timeline scrubber can be dragged
+        if (actualMime.toLowerCase().includes('webm')) {
+          try {
+            const durationMs = Math.max(duration.value * 1000, 1000)
+            finalBlob = await fixWebmDuration(finalBlob, durationMs)
+          } catch (e) {
+            console.warn('[ScreenRecorder] fixWebmDuration error:', e)
+          }
+        }
+
+        recordedBlob.value = finalBlob
+        recordedUrl.value = URL.createObjectURL(finalBlob)
         showPreview.value = true
 
         // Clean up active streams

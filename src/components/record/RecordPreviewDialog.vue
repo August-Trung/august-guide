@@ -180,22 +180,16 @@ const handleSave = async () => {
     const now = new Date()
     const pad = (n: number) => n.toString().padStart(2, '0')
     const dateStr = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
-    const ext = defaultExt.value
-    const defaultName = `AugustGuide_Record_${dateStr}.${ext}`
+    const defaultName = `AugustGuide_Record_${dateStr}.mp4`
 
     let selectedPath = await save({
-      title: 'Lưu file video ghi hình',
+      title: 'Lưu file video ghi hình (MP4 chuẩn)',
       defaultPath: defaultName,
-      filters: isMp4.value
-        ? [
-            { name: 'MP4 Video (*.mp4)', extensions: ['mp4'] },
-            { name: 'All Files (*.*)', extensions: ['*'] }
-          ]
-        : [
-            { name: 'WebM Video (*.webm)', extensions: ['webm'] },
-            { name: 'MP4 Video (*.mp4)', extensions: ['mp4'] },
-            { name: 'All Files (*.*)', extensions: ['*'] }
-          ]
+      filters: [
+        { name: 'Video MP4 (*.mp4)', extensions: ['mp4'] },
+        { name: 'Video WebM (*.webm)', extensions: ['webm'] },
+        { name: 'Tất cả tập tin (*.*)', extensions: ['*'] }
+      ]
     })
 
     if (!selectedPath) {
@@ -203,9 +197,9 @@ const handleSave = async () => {
       return
     }
 
-    // Ensure valid video extension
+    // Ensure valid video extension (.mp4 by default)
     if (!selectedPath.toLowerCase().endsWith('.mp4') && !selectedPath.toLowerCase().endsWith('.webm')) {
-      selectedPath = `${selectedPath}.${ext}`
+      selectedPath = `${selectedPath}.mp4`
     }
 
     // Save as direct binary Uint8Array for high performance & reliability
